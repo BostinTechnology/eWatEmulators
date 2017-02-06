@@ -8,8 +8,11 @@
 #
 #
 # TODO:
-#   upgrade pyserial to v3 and change commands maed #v3
+#   upgrade pyserial to v3 and change commands marked #v3
 #   Implement menu options
+#   Test CTS control
+#   Test data packet sending
+#   Need to store the packet sent to resend if asked
 #
 # BUGS
 #   conn in the try except routine at the end is not defined!

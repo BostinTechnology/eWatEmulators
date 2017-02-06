@@ -9,20 +9,20 @@ It is intended to be used as part of the eWater Emulator, but it can be run inde
 import logging
 import random
 import datetime
+import time
 
 PACKET_LENGTH = 27          # Number of bytes in the packet
 
 # Create a list of error codes and populate it with the posible values
-ERROR_CODES = []
-for i in range(0,16):
-    ERROR_CODES.append(chr(i).encode('utf-8'))
+ERROR_CODES = [b'\x00', b'\x01', b'\x02', b'\x03', b'\x04', b'\x05', b'\x06', b'\x07', 
+                b'\x08', b'\x09', b'\x0a', b'\x0b', b'\x0c', b'\x0d', b'\x0e', b'\x0f']
 
-UUID = [b'0xAA', b'0xAA', b'0xAA', b'0xAA']
-USAGE = [b'0x21', b'0x22', b'0x23', b'0x24']
-START_CREDIT = [b'0x31', b'0x32', b'0x33', b'0x34']
-END_CREDIT = [b'0x31', b'0x32', b'0x33', b'0x30']
-FLOW_COUNT = [b'0x01', b'0x10']
-FLOW_TIME = [b'0x1A', b'0x1A']
+UUID = [b'\x3e', b'\xAA', b'\xAA', b'\x3c']
+USAGE = [b'\x30', b'\x30', b'\x31', b'\x31']
+START_CREDIT = [b'\x34', b'\x30', b'\x30', b'\x30']
+END_CREDIT = [b'\x33', b'\x39', b'\x38', b'\x39']
+FLOW_COUNT = [b'\x01', b'\x10']
+FLOW_TIME = [b'\x1A', b'\x1A']
 
 
 
@@ -33,16 +33,9 @@ def byte_to_bcd(byte):
         bcd = 99
     else:
         bcd = int(format(byte,'x'))
-    return bcd
+    return bcd    
 
-def BuildTimeandDate():
-    """
-    Generates a string that contains the date and time
-    """
-    timenow = datetime.datetime.now()
-    
-
-def GeneratePacket(good=True, error=0):
+def GeneratePacket(good=True, error=0, timenow=0):
     """
     Generates and returns a single packet in binary format
     EE SS MM HH DD MT YY UU UU UU UU UC UC UC UC SCR SCR SCR SCR ECR ECR ECR ECR FC FC FT FT
@@ -58,13 +51,14 @@ def GeneratePacket(good=True, error=0):
         data_packet.append(ERROR_CODES[error])
 
     # Date and Time
-    timenow = datetime.datetime.now()
+    if timenow ==0:
+        timenow = datetime.datetime.now()
     data_packet.append(str(timenow.second).encode('utf-8'))
     data_packet.append(str(timenow.minute).encode('utf-8'))
     data_packet.append(str(timenow.hour).encode('utf-8'))
     data_packet.append(str(timenow.day).encode('utf-8'))
     data_packet.append(str(timenow.month).encode('utf-8'))
-    data_packet.append(str(timenow.year).encode('utf-8'))
+    data_packet.append(str(timenow.year)[2:4].encode('utf-8'))
 
     # 4 byte card UUID
     data_packet = data_packet + UUID
@@ -85,15 +79,47 @@ def GeneratePacket(good=True, error=0):
     data_packet = data_packet + FLOW_TIME
     return data_packet
 
-
+def BuildSampleFile(err):
+    """
+    Build a sample file, with each record being the next second
+    """
+    filename = input("Enter filename:")
+    fd = open(filename, 'w')
+    time = datetime.datetime.now()
+    for i in range(0,1024):
+        time = time + datetime.timedelta(seconds=1) 
+        data = GeneratePacket(err, (i % 16), time)
+        for j in range(0,len(data)):
+            fd.write(str(data[j]))
+            if j != len(data)-1:
+                fd.write(",")
+        fd.write("\n")
+    fd.close
+    
 def main():
 
-    sample = GeneratePacket()
-    print("Data:%s" % sample)
-    for i in range(0,16):
-        sample_error = GeneratePacket(False,i)
-        print("\nError Data:%s" % sample_error)
-        
+    choice = ""
+    print("Menu Choices")
+    print("1 - Build Sample Good Packet")
+    print("2 - Build Sample Error Packets\n")
+    print("3 - Build Sample Good File")
+    print("4 - Build Sample Error File")
+    print("e - exit")
+    while choice != "e":
+        choice = input("Select:")
+        if choice == "1":
+            sample = GeneratePacket()
+            print("Data:%s" % sample)
+        elif choice == "2":
+            for i in range(0,16):
+                sample_error = GeneratePacket(False,i)
+                print("\nError Data:%s" % sample_error)
+        elif choice == "3":
+            BuildSampleFile(True)
+        elif choice == "4":
+            BuildSampleFile(False)
+        else:
+            print("unknown choice")
     return
 
 
