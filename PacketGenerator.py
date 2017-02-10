@@ -6,25 +6,17 @@ It is intended to be used as part of the eWater Emulator, but it can be run inde
 
 """
 
+# It may be necessary to open the file in binary mode, using 'wb'.
+#TODO: Building of the sample file needs to be able to add error details
+
 import logging
 import random
 import datetime
 import time
 
-PACKET_LENGTH = 27          # Number of bytes in the packet
+import Settings
 
-# Create a list of error codes and populate it with the posible values
-ERROR_CODES = [b'\x00', b'\x01', b'\x02', b'\x03', b'\x04', b'\x05', b'\x06', b'\x07', 
-                b'\x08', b'\x09', b'\x0a', b'\x0b', b'\x0c', b'\x0d', b'\x0e', b'\x0f']
-
-UUID = [b'\x3e', b'\xAA', b'\xAA', b'\x3c']
-USAGE = [b'\x30', b'\x30', b'\x31', b'\x31']
-START_CREDIT = [b'\x34', b'\x30', b'\x30', b'\x30']
-END_CREDIT = [b'\x33', b'\x39', b'\x38', b'\x39']
-FLOW_COUNT = [b'\x01', b'\x10']
-FLOW_TIME = [b'\x1A', b'\x1A']
-
-
+#TODO: Need to move the settings into the seperate settings.py script
 
 def byte_to_bcd(byte):
     # Taking the given byte as an int, return the bcd equivalent
@@ -46,9 +38,9 @@ def GeneratePacket(good=True, error=0, timenow=0):
 
     # Error Code
     if good:
-        data_packet.append(ERROR_CODES[0])
+        data_packet.append(Settings.ERROR_CODES[0])
     else:
-        data_packet.append(ERROR_CODES[error])
+        data_packet.append(Settings.ERROR_CODES[error])
 
     # Date and Time
     if timenow ==0:
@@ -61,22 +53,22 @@ def GeneratePacket(good=True, error=0, timenow=0):
     data_packet.append(str(timenow.year)[2:4].encode('utf-8'))
 
     # 4 byte card UUID
-    data_packet = data_packet + UUID
+    data_packet = data_packet + Settings.UUID
     
     # 4 byte usage counter
-    data_packet = data_packet + USAGE
+    data_packet = data_packet + Settings.USAGE
     
     # 4 byte start credit
-    data_packet = data_packet + START_CREDIT
+    data_packet = data_packet + Settings.START_CREDIT
     
     # 4 byte end credit
-    data_packet = data_packet + END_CREDIT
+    data_packet = data_packet + Settings.END_CREDIT
     
     # 2 byte flow meter count
-    data_packet = data_packet + FLOW_COUNT
+    data_packet = data_packet + Settings.FLOW_COUNT
     
     # 2 byte flow meter time
-    data_packet = data_packet + FLOW_TIME
+    data_packet = data_packet + Settings.FLOW_TIME
     return data_packet
 
 def BuildSampleFile(err):
@@ -95,18 +87,39 @@ def BuildSampleFile(err):
                 fd.write(",")
         fd.write("\n")
     fd.close
-    
-def main():
 
-    choice = ""
-    print("Menu Choices")
+def HelpText():
+    """
+    Display the list of commands possible for the program
+    """
+    print("Menu Options")
+    print("------------\n\n")
     print("1 - Build Sample Good Packet")
     print("2 - Build Sample Error Packets\n")
     print("3 - Build Sample Good File")
     print("4 - Build Sample Error File")
+    print("h - Help Text")
     print("e - exit")
-    while choice != "e":
-        choice = input("Select:")
+    return
+    
+def SplashScreen():
+    print("***********************************************")
+    print("*        Bostin Technology Emulator           *")
+    print("*                                             *")
+    print("*       in association with eWater Pay        *")
+    print("*                                             *")
+    print("*              Packet Generator               *")
+    print("***********************************************\n")
+    return
+    
+def main():
+
+    SplashScreen()
+    HelpText()
+    choice = ""
+
+    while choice.upper() != "E":
+        choice = input("Select Menu Option:")
         if choice == "1":
             sample = GeneratePacket()
             print("Data:%s" % sample)
@@ -118,9 +131,13 @@ def main():
             BuildSampleFile(True)
         elif choice == "4":
             BuildSampleFile(False)
+        elif choice.upper() == "H":
+            HelpText()
+        elif choice.upper() =="E":
+            exit()
         else:
             print("unknown choice")
-    return
+    return True
 
 
 

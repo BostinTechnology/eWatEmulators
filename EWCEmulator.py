@@ -1,18 +1,13 @@
 #!/usr/bin/env python3
 
-#
-#
-#
-#
-#
-#
-#
+
 # TODO:
 #   upgrade pyserial to v3 and change commands marked #v3
 #   Implement menu options
 #   Test CTS control
 #   Test data packet sending
 #   Need to store the packet sent to resend if asked
+#   Add in the help functionality
 #
 # BUGS
 #   conn in the try except routine at the end is not defined!
@@ -29,7 +24,7 @@ import PacketGenerator
 
 BAUDRATE = 9600         # The speed of the comms
 PORT = "/dev/serial0"   # The port being used for the comms
-TIMEOUT = 1             # The maximum time allowed to reeive a message
+TIMEOUT = 1             # The maximum time allowed to receive a message
 GPIO_CTS = 11           # The CTS line, also known as GPIO17
 
 LOG_LVL = logging.DEBUG
@@ -60,7 +55,7 @@ def SetupLogging():
     # add ch to logger
     logger.addHandler(ch)
     logger.addHandler(fh)
-    return
+    return logger
     
 def SerialSetup():
     """ 
@@ -81,8 +76,10 @@ def SerialSetup():
     if fd.isOpen():
         # if serial is setup and the opened channel is greater than zero (zero = fail)
         print ("PI setup complete on channel %s" % fd)
+        logger.info("PI setup complete on channel %s" % fd)
     else:
         print ("Unable to Setup communications")
+        logger.error ("Unable to Setup communications")
         sys.exit()
         
     return fd
@@ -95,14 +92,14 @@ def CTSControl(state="SWITCH"):
        LOW      set it low
        SWITCH   (default)
     """
-    if state.upper == "HIGH":
+    if state.upper() == "HIGH":
         GPIO.output(GPIO_CTS, GPIO.HIGH)
-    elif state.upper == "LOW":
+    elif state.upper() == "LOW":
         GPIO.output(GPIO_CTS, GPIO.LOW)
-    elif state.upper == "SWITCH":
+    elif state.upper() == "SWITCH":
         GPIO.output(GPIO_CTS, not(GPIO.input(GPIO_CTS)))
     else:
-        logging.WARNING("CTS Control State reqeusted outside of range")
+        print("CTS Control State requested outside of range")
     return
 
 def WriteDataBinary(fd,send,cts=True):
@@ -144,16 +141,16 @@ def Menu_ControlCTS(fd):
     """
     print("\nControl the CTS Line\n")
     choice = input("Choose (H)igh, (L)ow, (T)oggle or (R)epeatably Toggle:")
-    if choice.upper =="H":
+    if choice.upper() =="H":
         CTSControl("HIGH")
         print("CTS Now High")
-    elif choice.upper =="L":
+    elif choice.upper() =="L":
         CTSControl("LOW")
         print("CTS Now Low")
-    elif choice.upper =="T":
+    elif choice.upper() =="T":
         CTSControl("SWITCH")
         print("CTS Switched")
-    elif choice.upper =="R":
+    elif choice.upper() =="R":
         speed =0
         while speed ==0:
             speed = input("Set time period (in seconds)")
@@ -174,7 +171,9 @@ def Menu_ControlCTS(fd):
                 CTSControl("SWITCH")
                 print("Switched")
         except KeyboardInterrupt:
-            print("Completed")        
+            print("Completed")
+    else:
+        print("Unknown Option")
     return
 
 def Menu_SendSinglePacket(fd):
@@ -270,6 +269,8 @@ def HelpText():
     print("3 - Send Datalog Packet every x seconds")
     print("4 - Send Datalog Packet with error ee")
     print("0 - Respond to IoT")
+    print("h - Show this help")
+    print("e - exit")
     return
     
 def SplashScreen():
@@ -286,28 +287,35 @@ def main():
     
     SplashScreen()
     
-    SetupLogging()
+    log = SetupLogging()
+    log.info("Application Started")
     conn = SerialSetup()
     
     HelpText()
-    choice = input("Select Menu Option:")
-    if choice == "1":
-        Menu_ControlCTS(conn)
-    elif choice == "2":
-        Menu_SendSinglePacket(conn)
-    elif choice == "3":
-        Menu_SendRepeatingPacket(conn)
-    elif choice == "4":
-        Menu_SendErrorPacket(conn)
-    elif choice =="0":
-        Menu_IoTReply(conn)
-        
-    
-    
+    choice = ""
+    while choice.upper() != "E":
+        choice = input("Select Menu Option:")
+        if choice == "1":
+            Menu_ControlCTS(conn)
+        elif choice == "2":
+            Menu_SendSinglePacket(conn)
+        elif choice == "3":
+            Menu_SendRepeatingPacket(conn)
+        elif choice == "4":
+            Menu_SendErrorPacket(conn)
+        elif choice =="0":
+            Menu_IoTReply(conn)
+        elif choice.upper() =="E":
+            pritn("Leaving")
+            exit()
+        else:
+            print("Unknown Option")
+    print("got here!")
     return
 
 if __name__ == '__main__':
-    
+
+    conn = ""
     try:
         main()
     
