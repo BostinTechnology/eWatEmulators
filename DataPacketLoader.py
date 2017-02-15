@@ -17,6 +17,8 @@ The returned structure consists of a list of records, each record consists of th
 #TODO: need to put try loops around some of the stuff to enable a CTRL C to exit routine.
 #TODO: Using PACKET_LENGTH for the record length check. But the file should not include some data
 #TODO: Need to have syntax in the file to ignore some data.
+#TODO: Chosefile can return an empty file, so there might need to be some more validation within it
+#       or further processing to continue or abort
 
 import os
 import sys
@@ -67,14 +69,14 @@ def ReadFile(fd):
         else:
             records.append(record.split(','))
     return records
-    
+
 def LoadFile(filename):
     """
     Load the given file for reading and return it
     """
     # Open the file
     fd = OpenFile(filename)
-    
+
     # Read the records
     records = ReadFile(fd)
     return records
@@ -83,7 +85,7 @@ def CheckRecords(records):
     """
     Check the quantity of records and check each record length
     """
-    
+
     # Check there are QUANTITY_OF_RECORDS (expected to be 1024) records
     if len(records) != Settings.QUANTITY_OF_RECORDS:
         print("Record count failure, expected %s records, got %s" % (Settings.QUANTITY_OF_RECORDS, len(records)))
@@ -93,25 +95,25 @@ def CheckRecords(records):
         if len(record) != Settings.PACKET_LENGTH_NO_HEAD:
             print("Record length failure, record \n%s\n incorrect length, expected %s, got %s" % (record, Settings.PACKET_LENGTH_NO_HEAD, len(record)))
             return False
-    
+
     return True
-    
+
 def ValidateFile(rcds):
     """
     Take the given file and validate it for the following
     - The right number of records
     - Each record of the right length
     """
-   
+
     # Check Qty Records
     good = CheckRecords(rcds)
-    
+
     return good
 
 def DisplayFile(displayfile):
     """
     Takes the given file and displays it to the screen
-    
+
     """
     if len(displayfile) < 1:
         print("No file selected")
@@ -139,7 +141,7 @@ def HelpText():
     print("h - Help")
     print("e - exit")
     return
-    
+
 def SplashScreen():
     print("***********************************************")
     print("*          Bostin Technology Data             *")
@@ -162,9 +164,9 @@ def LoadandValidateFile(chosenfile=""):
     rcds = LoadFile(chosenfile)
     validatedfile = ValidateFile(rcds)
     return [validatedfile,rcds]
-    
+
 def main():
-	
+
     SplashScreen()
     HelpText()
 
@@ -200,5 +202,10 @@ def main():
     return True
 
 if __name__ == '__main__':
-	main()
+
+    logging.basicConfig(filename="eWaterEmulator.txt", filemode="w", level=Settings.LG_LVL,
+                        format='%(asctime)s:%(levelname)s:%(message)s')
+
+
+    main()
 

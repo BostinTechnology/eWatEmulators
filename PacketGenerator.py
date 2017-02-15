@@ -25,7 +25,7 @@ def byte_to_bcd(byte):
         bcd = 99
     else:
         bcd = int(format(byte,'x'))
-    return bcd    
+    return bcd
 
 def GeneratePacket(good=True, error=0, timenow=0):
     """
@@ -54,19 +54,19 @@ def GeneratePacket(good=True, error=0, timenow=0):
 
     # 4 byte card UUID
     data_packet = data_packet + Settings.UUID
-    
+
     # 4 byte usage counter
     data_packet = data_packet + Settings.USAGE
-    
+
     # 4 byte start credit
     data_packet = data_packet + Settings.START_CREDIT
-    
+
     # 4 byte end credit
     data_packet = data_packet + Settings.END_CREDIT
-    
+
     # 2 byte flow meter count
     data_packet = data_packet + Settings.FLOW_COUNT
-    
+
     # 2 byte flow meter time
     data_packet = data_packet + Settings.FLOW_TIME
     return data_packet
@@ -79,7 +79,7 @@ def BuildSampleFile(err):
     fd = open(filename, 'w')
     time = datetime.datetime.now()
     for i in range(0,1024):
-        time = time + datetime.timedelta(seconds=1) 
+        time = time + datetime.timedelta(seconds=1)
         data = GeneratePacket(err, (i % 16), time)
         for j in range(0,len(data)):
             fd.write(str(data[j]))
@@ -101,7 +101,7 @@ def HelpText():
     print("h - Help Text")
     print("e - exit")
     return
-    
+
 def SplashScreen():
     print("***********************************************")
     print("*        Bostin Technology Emulator           *")
@@ -111,7 +111,7 @@ def SplashScreen():
     print("*              Packet Generator               *")
     print("***********************************************\n")
     return
-    
+
 def main():
 
     SplashScreen()
@@ -142,6 +142,10 @@ def main():
 
 
 if __name__ == '__main__':
+
+    logging.basicConfig(filename="eWaterEmulator.txt", filemode="w", level=Settings.LG_LVL,
+                        format='%(asctime)s:%(levelname)s:%(message)s')
+
     main()
 
 

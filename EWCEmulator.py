@@ -1,22 +1,41 @@
 #!/usr/bin/env python3
 
+# CUrrently doing:
+#   Need to store the packet sent to resend if asked
+#   The packet sent is currently just the data segment, it needs the rest wrapping around it
+#   Creating PacketBuilder
 
 # TODO:
 #   upgrade pyserial to v3 and change commands marked #v3
-#   Implement menu options
+#   Upgrade for v0.3 of the spec, I think this includes
+#   - longer data packet
+#   - additional data header stuff
+#   - packet number
+#   Send incorrect data
+#   - Too small / big
+#   - Out of Sync
+#   - Wrong ID / No ID
+#   - CRC Error
+#   Implement Respond to IoT
+#   Allow packet to send to be chosen
+#   Add in the Bootloader functionality
+#   Call DataPacketLoader and PacketGenerator from within this main menu
+#   Consider adding the packets into a class so I can manipulate them easier maybe...
+#   improve code by havingn writedata respond with a message if failed
+#   - stops it repeating the same 5 lines of code
+#
+# Testing To Do
 #   Test CTS control
 #   Test data packet sending
-#   Need to store the packet sent to resend if asked
-#   Add in the help functionality
-#
 # BUGS
 #   conn in the try except routine at the end is not defined!
+#
 
 
 import RPi.GPIO as GPIO
 import serial
 import logging
-import sys, tty, termios
+import sys
 import datetime
 
 import PacketGenerator
@@ -27,61 +46,37 @@ PORT = "/dev/serial0"   # The port being used for the comms
 TIMEOUT = 1             # The maximum time allowed to receive a message
 GPIO_CTS = 11           # The CTS line, also known as GPIO17
 
-LOG_LVL = logging.DEBUG
+# EWC_Records holds all the records generated or send to the IoT
+# EWC_Pointer hold sthe vallue of the lat record sent to the IoT
+EWC_Records = []
+EWC_Pointer = 0
 
-def SetupLogging():
-    """
-    Setup the logger and the various settings
-    """
-    # create logger
-    logger = logging.getLogger(__name__ + ".log")
-    logger.setLevel(logging.DEBUG)
 
-    # create console handler and set level to Error
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.ERROR)
-    
-    # create file handler which logs even debug messages
-    fh = logging.FileHandler(__name__ + ".log")
-    fh.setLevel(LOG_LVL)
-
-    # create formatter
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-    # add formatter to ch and fh
-    ch.setFormatter(formatter)
-    fh.setFormatter(formatter)
-
-    # add ch to logger
-    logger.addHandler(ch)
-    logger.addHandler(fh)
-    return logger
-    
 def SerialSetup():
-    """ 
+    """
     Setup the serial connection for the EWC, using serial
     Setup the GPIO port for the CTS line
     """
     # set the GPIO pin for the CTS line output
     GPIO.setmode(GPIO.BOARD)
     GPIO.setup(GPIO_CTS, GPIO.OUT)
-    
+
     # open the serial port and set the speed accordingly
     fd = serial.Serial(PORT, BAUDRATE, timeout = TIMEOUT)
 
     # clear the serial buffer of any left over data
     #fd.reset_output_buffer()       #v3
     fd.flushOutput()
-    
+
     if fd.isOpen():
         # if serial is setup and the opened channel is greater than zero (zero = fail)
         print ("PI setup complete on channel %s" % fd)
-        logger.info("PI setup complete on channel %s" % fd)
+        logging.info("PI setup complete on channel %s" % fd)
     else:
         print ("Unable to Setup communications")
-        logger.error ("Unable to Setup communications")
+        logging.error ("Unable to Setup communications")
         sys.exit()
-        
+
     return fd
 
 def CTSControl(state="SWITCH"):
@@ -100,12 +95,15 @@ def CTSControl(state="SWITCH"):
         GPIO.output(GPIO_CTS, not(GPIO.input(GPIO_CTS)))
     else:
         print("CTS Control State requested outside of range")
+        logging.error("CTS Control State requested outside of range")
     return
 
 def WriteDataBinary(fd,send,cts=True):
-    # This routine will take the given data and write it to the serial port
-    # returns the data length or 0 indicating fail
-    # if cts is False, doesn't control the cts line
+    """
+    This routine will take the given data and write it to the serial port
+    returns the data length or 0 indicating fail
+    if cts is False, doesn't control the cts line
+    """
 
     try:
         if cts:
@@ -115,15 +113,27 @@ def WriteDataBinary(fd,send,cts=True):
         if cts:
             CTSControl("HIGH")
     except Exception as e:
-        logging.warning("Message >%s< sent as >%a< FAILED" % (message, send))
+        logging.warning("Message >%s< sent as >%s< FAILED with response :%s" % (message, send, ans))
         ans = 0
     return ans
+
+def PacketBuilder(data):
+    """
+    See notes in book
+    Takes the given data packet and
+    - Increases the EWC_Pointer
+        Checks for it wrapping around
+    - Generates a full packet
+        Adds it into the data structure
+    returns the record
+    """
+
+    return
 
 def GenerateGoodPacket():
     """
     Generates and returns a single packet
-    EE SS MM HH DD MT YY UU UU UU UU UC UC UC UC SCR SCR SCR SCR ECR ECR ECR ECR FC FC FT FT
-    0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15  16  17  18  19  20  21  22  23 24 25 26
+    Uses the Packet Generator program to get a packet
     """
     # generated by the PacketGenerator script
     return PacketGenerator.GeneratePacket()
@@ -134,7 +144,7 @@ def GenerateErrorPacket(error):
     """
     # generated by the PacketGenerator script
     return PacketGenerator.GeneratePacket(False,error)
-    
+
 def Menu_ControlCTS(fd):
     """
     Allow the user to manually, or automatically toggle the CTS line
@@ -184,11 +194,13 @@ def Menu_SendSinglePacket(fd):
     print("Sending a packet")
     # Get a packet
     to_send = GenerateGoodPacket()
-    
+
     # Send a packet
     ans = WriteDataBinary(fd,to_Send)
     if ans > 0:
         print("Packet Sent: %s" % to_send)
+    else:
+        print("Failed to send packet")
     return
 
 def Menu_SendRepeatingPacket(fd):
@@ -217,13 +229,15 @@ def Menu_SendRepeatingPacket(fd):
             print("Sending a packet")
             # Get a packet
             to_send = GenerateGoodPacket()
-            
+
             # Send a packet
             ans = WriteDataBinary(fd,to_Send)
             if ans > 0:
                 print("Packet Sent: %s" % to_send)
+            else:
+                print("Failed to Send Packet")
     except KeyboardInterrupt:
-        print("Completed")  
+        print("Completed")
     return
 
 def Menu_SendErrorPacket(fd):
@@ -237,17 +251,90 @@ def Menu_SendErrorPacket(fd):
         if err.isdigit == False:
             print("Enter a number please")
             err = 0
-        elif err < 0 or err > 15:
+        elif err < 1 or err > 15:
             print("Only numbers in the range 1 to 15")
             err = 0
     print("Sending a packet")
     # Get a packet
     to_send = GenerateGoodPacket(False, err)
-    
+
+
     # Send a packet
     ans = WriteDataBinary(fd,to_Send)
     if ans > 0:
         print("Packet Sent: %s" % to_send)
+    else:
+        print("Failed to Send Packet")
+    return
+
+def GenerateTooShort():
+    """
+    Send a data packet that is too short
+    """
+    print("Not Yet Implemented")
+    return
+
+def GenerateTooBig():
+    """
+    Send a data packet that is too big
+    """
+    print("Not Yet Implemented")
+    return
+
+def GenerateOutofSync():
+    """
+    Send a data packet that is the wrong sequence number
+    """
+    print("Not Yet Implemented")
+    return
+
+def GenerateWrongID():
+    """
+    Send a data packet with No ID at the front of it
+    """
+    print("Not Yet Implemented")
+    return
+
+def GenerateNoID():
+    """
+    Send a data packet that has NO ID in it
+    """
+    print("Not Yet Implemented")
+    return
+
+def Menu_BadPacket(fd):
+    """
+    Provide the menu to allow the different bad packets to be sent / received
+    - Too small / big
+    - Out of Sync
+    - Wrong ID / No ID
+    - CRC Error
+    """
+    print("\nSend a bad Packet from the EWC\n")
+    print("Menu Options")
+    print("------------\n\n")
+    print("1 - Too short")
+    print("2 - Too big")
+    print("3 - Out of Sync Forward")
+    print("4 - Out of Sync Backward")
+    print("5 - Wrong ID")
+    print("6 - No ID")
+    print("any other key to return to previous menu")
+
+    choice = input("Choose:")
+    if choice =="1":
+        to_Send = GenerateTooShort()
+    elif choice =="2":
+        to_Send = GenerateTooBig()
+    elif choice =="3":
+        to_Send = GenerateOutofSyncForward()
+    elif choice =="4":
+        to_Send = GenerateOutofSyncBackward()
+    elif choice =="5":
+        to_Send = GenerateWrongID()
+    elif choice =="6":
+        to_Send = GenerateNoID()
+
     return
 
 def Menu_IoTReply(fd):
@@ -257,7 +344,7 @@ def Menu_IoTReply(fd):
     print("Not Yet Implemented")
     return
 
-    
+
 def HelpText():
     """
     Display the list of commands possible for the program
@@ -267,12 +354,13 @@ def HelpText():
     print("1 - Control CTS")
     print("2 - Send Datalog Packet")
     print("3 - Send Datalog Packet every x seconds")
-    print("4 - Send Datalog Packet with error ee")
+    print("4 - Send Datalog Packet with error code ee")
+    print("5 - Send bad Datalog Packet")
     print("0 - Respond to IoT")
     print("h - Show this help")
     print("e - exit")
     return
-    
+
 def SplashScreen():
     print("***********************************************")
     print("*        Bostin Technology Emulator           *")
@@ -282,15 +370,14 @@ def SplashScreen():
     print("*                EWC Emulator                 *")
     print("***********************************************\n")
     return
-    
+
 def main():
-    
+
     SplashScreen()
-    
-    log = SetupLogging()
-    log.info("Application Started")
+
+    logging.info("Application Started")
     conn = SerialSetup()
-    
+
     HelpText()
     choice = ""
     while choice.upper() != "E":
@@ -303,11 +390,15 @@ def main():
             Menu_SendRepeatingPacket(conn)
         elif choice == "4":
             Menu_SendErrorPacket(conn)
+        elif choice == "5":
+            Menu_SendBadPacket(conn)
         elif choice =="0":
             Menu_IoTReply(conn)
         elif choice.upper() =="E":
             pritn("Leaving")
             exit()
+        elif choice.upper() =="H":
+            HelpText()
         else:
             print("Unknown Option")
     print("got here!")
@@ -316,9 +407,12 @@ def main():
 if __name__ == '__main__':
 
     conn = ""
+    logging.basicConfig(filename="eWaterEmulator.txt", filemode="w", level=Settings.LG_LVL,
+                        format='%(asctime)s:%(levelname)s:%(message)s')
+
     try:
         main()
-    
+
     except:
         if conn:
             conn.close()
