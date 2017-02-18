@@ -49,7 +49,7 @@ GPIO_CTS = 11           # The CTS line, also known as GPIO17
 
 # EWC_Records holds all the records generated or send to the IoT
 # EWC_Pointer holds the value of the last record sent to the IoT
-gbl_EWC_Records = []
+gbl_EWC_Records = [''] * Settings.QUANTITY_OF_RECORDS
 gbl_EWC_Pointer = -1           # Set to -1 to indicate not yet initialised
 
 
@@ -118,7 +118,7 @@ def WriteDataBinary(fd,send,cts=True):
         ans = 0
     return ans
 
-def DataLogPacketBuilder(data):
+def DataLogPacketBuilder(data, inc_id=True, ewc_id=""):
     """
     See notes in book
     Takes the given data packet and
@@ -127,17 +127,27 @@ def DataLogPacketBuilder(data):
     - Generates a full packet
         Adds it into the data structure
     returns the record
+    if inc_id is False, the ID is not included
     """
     msg = []
     global gbl_EWC_Pointer              # Added as I am modifying the global variable
+    global gbl_EWC_Records              # Added as I am modifying the global variable
+
     gbl_EWC_Pointer = gbl_EWC_Pointer + 1
     logging.debug("Datalog Packet being created / modified:%s" % gbl_EWC_Pointer)
     if gbl_EWC_Pointer >= Settings.QUANTITY_OF_RECORDS:
         # Pointer has jumped past the last record, reset to the start
         gbl_EWC_Pointer = 0
-        logging.debug("BUffer reached limit and reset to zero")
+        logging.debug("Buffer reached limit and reset to zero")
     msg.append(Settings.CMD_DATALOG_PACKET)
-    msg = msg + Settings.EWC_ID
+    if inc_id:
+        if ewc_id == "":
+            msg = msg + Settings.EWC_ID
+        else:
+            msg = msg + ewc_id
+            logging.debug("Wrong EWC ID Used:%s" % ewc_id)
+    else:
+        logging.debug("EWC ID NOT included")
     msg = msg + data
     # build pointer, lower part is simply AND'd with 0xFF, while the upper part is AND'd with 0xff00 and then shited 8 bits
     ptr_l = hex(gbl_EWC_Pointer & 0x000000ff).encode('utf-8')
@@ -154,6 +164,7 @@ def DataLogPacketBuilder(data):
 
     msg.append(binascii.a2b_hex('{:02x}'.format(xor).encode('utf-8')))
     logging.info("Datalog Packet:%s" % msg)
+    gbl_EWC_Records[gbl_EWC_Pointer] = msg
     return msg
 
 def GenerateGoodPacket():
@@ -218,7 +229,7 @@ def Menu_ControlCTS(fd):
         print("Unknown Option")
     return
 
-def Menu_SendSinglePacket(fd):
+def SendSinglePacket(fd):
     """
     Send a single packet to the EWC
     Controls the CTS line automatically
@@ -235,7 +246,7 @@ def Menu_SendSinglePacket(fd):
         print("Failed to send packet")
     return
 
-def Menu_SendRepeatingPacket(fd):
+def SendRepeatingPacket(fd):
     """
     Allows the user to determine the speed of messaging and then sends a packet repeatably
     Controls the CTS line
@@ -247,9 +258,12 @@ def Menu_SendRepeatingPacket(fd):
         if speed.isdigit == False:
             print("Enter a number please")
             speed = 0
-        elif speed < 0:
-            print("Only positive numbers please")
-            speed = 0
+        else:
+            if int(speed) < 0:
+                print("Only positive numbers please")
+                speed = 0
+            else:
+                speed = int(speed)
     print("CTRL-C to exit")
     try:
         while True:
@@ -257,13 +271,13 @@ def Menu_SendRepeatingPacket(fd):
             starttime = datetime.datetime.now()
             endtime = starttime + datetime.timedelta(seconds=speed)
             while endtime > datetime.datetime.now():
-                print ("\r.", end="")
-            print("Sending a packet")
+                print ("\rWaiting", end="")
+            print("\nSending a packet")
             # Get a packet
             to_send = GenerateGoodPacket()
 
             # Send a packet
-            ans = WriteDataBinary(fd,to_Send)
+            ans = WriteDataBinary(fd,to_send)
             if ans > 0:
                 print("Packet Sent: %s" % to_send)
             else:
@@ -272,27 +286,33 @@ def Menu_SendRepeatingPacket(fd):
         print("Completed")
     return
 
-def Menu_SendErrorPacket(fd):
+def SendErrorPacket(fd):
     """
     Allow the user to select an error code and then send a single packet with the error code
     Controls the CTS line
     """
     err =0
+    #Print the error codes
+
     while err ==0:
-        err = input("Select Error Code (1 - 15)")
+        err = input("Select Error Code (1 - %s)" % len(Settings.ERROR_CODES))
         if err.isdigit == False:
             print("Enter a number please")
             err = 0
-        elif err < 1 or err > 15:
-            print("Only numbers in the range 1 to 15")
-            err = 0
+        else:
+            # Need to validate the error reqeusted is in the list of error codes
+            # Convert to a binary number
+            err_bin = binascii.unhexlify('{:02d}'.format(int(err)))
+            if err_bin not in Settings.ERROR_CODES:
+                print("Only numbers listed below are allowed\n%s" % Settings.ERROR_CODES)
+                err = 0
     print("Sending a packet")
     # Get a packet
-    to_send = GenerateGoodPacket(False, err)
+    to_send = GenerateErrorPacket(err)
 
 
     # Send a packet
-    ans = WriteDataBinary(fd,to_Send)
+    ans = WriteDataBinary(fd,to_send)
     if ans > 0:
         print("Packet Sent: %s" % to_send)
     else:
@@ -303,36 +323,64 @@ def GenerateTooShort():
     """
     Send a data packet that is too short
     """
-    print("Not Yet Implemented")
-    return
+    # generated by the PacketGenerator script
+    datalog = PacketGenerator.GeneratePacket()
+    logging.debug("Datalog Packet Generated:%s" % datalog)
+    packet = DataLogPacketBuilder(datalog[0:len(datalog)-1])
+    return packet
 
 def GenerateTooBig():
     """
-    Send a data packet that is too big
+    Send a data packet that is too big, added 0xff at the end
     """
-    print("Not Yet Implemented")
-    return
+    # generated by the PacketGenerator script
+    datalog = PacketGenerator.GeneratePacket()
+    datalog.append(b'\xff')
+    logging.debug("Datalog Packet Generated:%s" % datalog)
+    packet = DataLogPacketBuilder(datalog)
+    return packet
 
-def GenerateOutofSync():
+def GenerateOutofSyncForward():
     """
     Send a data packet that is the wrong sequence number
     """
-    print("Not Yet Implemented")
-    return
+    for i in range(0,6):
+        data = GenerateGoodPacket()
+    return data
+
+def GenerateOutofSyncBackward():
+    """
+    Send a data packet that is the wrong sequence number
+    """
+    cur_posn = gbl_EWC_Pointer
+    if cur_posn > 5:
+        new_posn = cur_posn - 5
+    else:
+        new_posn = 0
+    logging.debug("Calculated position for sync backwards %s" % new_posn)
+    data = gbl_EWC_Records[new_posn]
+    return data
 
 def GenerateWrongID():
     """
     Send a data packet with No ID at the front of it
     """
-    print("Not Yet Implemented")
-    return
+    wrong_ewc = [b'\x02',b'\xF0', b'\x00', b'\x0F']
+    # generated by the PacketGenerator script
+    datalog = PacketGenerator.GeneratePacket()
+    logging.debug("Data Packet Generated:%s" % datalog)
+    packet = DataLogPacketBuilder(datalog, ewc_id=wrong_ewc)
+    return packet
 
 def GenerateNoID():
     """
     Send a data packet that has NO ID in it
     """
-    print("Not Yet Implemented")
-    return
+    # generated by the PacketGenerator script
+    datalog = PacketGenerator.GeneratePacket()
+    logging.debug("Data Packet Generated:%s" % datalog)
+    packet = DataLogPacketBuilder(datalog, inc_id=False)
+    return packet
 
 def Menu_BadPacket(fd):
     """
@@ -345,8 +393,8 @@ def Menu_BadPacket(fd):
     print("\nSend a bad Packet from the EWC\n")
     print("Menu Options")
     print("------------\n\n")
-    print("1 - Too short")
-    print("2 - Too big")
+    print("1 - Too short (1 byte)")
+    print("2 - Too big (1 byte)")
     print("3 - Out of Sync Forward")
     print("4 - Out of Sync Backward")
     print("5 - Wrong ID")
@@ -355,18 +403,23 @@ def Menu_BadPacket(fd):
 
     choice = input("Choose:")
     if choice =="1":
-        to_Send = GenerateTooShort()
+        to_send = GenerateTooShort()
     elif choice =="2":
-        to_Send = GenerateTooBig()
+        to_send = GenerateTooBig()
     elif choice =="3":
-        to_Send = GenerateOutofSyncForward()
+        to_send = GenerateOutofSyncForward()
     elif choice =="4":
-        to_Send = GenerateOutofSyncBackward()
+        to_send = GenerateOutofSyncBackward()
     elif choice =="5":
-        to_Send = GenerateWrongID()
+        to_send = GenerateWrongID()
     elif choice =="6":
-        to_Send = GenerateNoID()
+        to_send = GenerateNoID()
 
+    ans = WriteDataBinary(fd,to_send)
+    if ans > 0:
+        print("Packet Sent: %s" % to_send)
+    else:
+        print("Failed to Send Packet")
     return
 
 def Menu_IoTReply(fd):
@@ -417,23 +470,22 @@ def main():
         if choice == "1":
             Menu_ControlCTS(conn)
         elif choice == "2":
-            Menu_SendSinglePacket(conn)
+            SendSinglePacket(conn)
         elif choice == "3":
-            Menu_SendRepeatingPacket(conn)
+            SendRepeatingPacket(conn)
         elif choice == "4":
-            Menu_SendErrorPacket(conn)
+            SendErrorPacket(conn)
         elif choice == "5":
-            Menu_SendBadPacket(conn)
+            Menu_BadPacket(conn)
         elif choice =="0":
             Menu_IoTReply(conn)
         elif choice.upper() =="E":
-            pritn("Leaving")
-            exit()
+            print("Leaving")
+            #exit()
         elif choice.upper() =="H":
             HelpText()
         else:
             print("Unknown Option")
-    print("got here!")
     return
 
 if __name__ == '__main__':
@@ -446,13 +498,18 @@ if __name__ == '__main__':
         main()
 
     except Exception as err:
-        # Write the Log data
+        # Write the Exception data
         logging.warning("Exception:%s" % traceback.format_exc())
         print("\nError Occurred, program halted - refer to log file\n")
-        if conn:
-            conn.close()
-        GPIO.cleanup()
-        sys.exit()
+
+    logging.info("gbl_EWC_Pointer:%s" % gbl_EWC_Pointer)
+    logging.info("Capturing glb_EWC_Records data")
+    for rcd in range(0, gbl_EWC_Pointer):
+        logging.info("%s -> %s" %(rcd, gbl_EWC_Records[rcd]))
+    if conn:
+        conn.close()
+    GPIO.cleanup()
+    sys.exit()
 
 
 

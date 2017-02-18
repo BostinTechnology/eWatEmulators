@@ -38,8 +38,7 @@ def GeneratePacket(good=True, error=0, timenow=0):
     if timenow ==0:
         timenow = datetime.datetime.now()
     logging.debug("Date & Time being used:%s" % timenow)
-#BUG: These should be in BCD, not strings!!!!"
-    #ss = binascii.a2b_hex('{:02d}'.format(timenow.second).encode('utf-8'))
+
     data_packet.append(binascii.a2b_hex('{:02d}'.format(timenow.second).encode('utf-8')))
     data_packet.append(binascii.a2b_hex('{:02d}'.format(timenow.minute).encode('utf-8')))
     data_packet.append(binascii.a2b_hex('{:02d}'.format(timenow.hour).encode('utf-8')))

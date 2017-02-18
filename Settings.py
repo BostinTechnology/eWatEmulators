@@ -11,8 +11,8 @@ VERSION_MESSAGE = b'EWC Emulator version 1.0'
 
 
 # Create a list of error codes and populate it with the posible values
-ERROR_CODES = [b'\x00', b'\x01', b'\x02', b'\x03', b'\x04', b'\x05', b'\x06', b'\x07',
-                b'\x08', b'\x09', b'\x0a', b'\x0b', b'\x0c', b'\x0d', b'\x0e', b'\x0f']
+ERROR_CODES = [b'\x01', b'\x02', b'\x03', b'\x04', b'\x05', b'\x06', b'\x07',
+                b'\x08', b'\x09', b'\x0a', b'\x0b', b'\x0c', b'\x0d', b'\x0e', b'\x0f', b'\x10', b'\x11']
 
 # These values are contained within the datalog packet
 UUID = [b'\x3e', b'\xAA', b'\xAA', b'\x3c']
