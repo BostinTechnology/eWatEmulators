@@ -22,6 +22,7 @@ The returned structure consists of a list of records, each record consists of th
 
 import os
 import sys
+import logging
 
 import Settings
 
@@ -48,54 +49,68 @@ def OpenFile(filename):
     Open the file and return the identifier
     """
     try:
-        fd = open(filename, 'r')
+        rd = open(filename, 'r')
+        logging.debug("File %s opened as %s" % (filename, rd))
     except:
         print("Unable to Open File, program aborted")
+        logging.error("Unable to Open File %s, program aborted" % filename)
         sys.exit()
-    return fd
+    return rd
 
-def ReadFile(fd):
+def ReadFile(rd):
     """
     take the given file and read in the records
     Return the structure of the data.
     """
+    logging.info("Reading the file in")
     records = []
-    record = []
-    morerecords = True
-    while morerecords:
-        record = fd.readline()
-        if len(record) == 0:
-            morerecords = False
-        else:
-            records.append(record.split(','))
+    # This is a method recommended which is supposed to be more memory efficient
+    for record in rd:
+        logging.debug("Record Read in:%s" % record)
+        records.append(record.split(','))
+
+#    record = []
+#    morerecords = True
+#    while morerecords:
+#        record = rd.readline()
+#        logging.debug("Record Read in:%s" % record)
+#        if len(record) == 0:
+#            morerecords = False
+#        else:
+#            records.append(record.split(','))
+    logging.debug("File Read and created records\n%s" % records)
     return records
 
 def LoadFile(filename):
     """
     Load the given file for reading and return it
     """
+    logging.info("Loading the FIle")
     # Open the file
-    fd = OpenFile(filename)
-
+    rd = OpenFile(filename)
+    logging.debug("File Opened as %s" % rd)
     # Read the records
-    records = ReadFile(fd)
+    records = ReadFile(rd)
+    logging.debug("File Read and records being returned")
     return records
 
 def CheckRecords(records):
     """
     Check the quantity of records and check each record length
     """
-
+    logging.info("Checking the Records File")
     # Check there are QUANTITY_OF_RECORDS (expected to be 1024) records
     if len(records) != Settings.QUANTITY_OF_RECORDS:
         print("Record count failure, expected %s records, got %s" % (Settings.QUANTITY_OF_RECORDS, len(records)))
+        logging.debug("Record count failure, expected %s records, got %s" % (Settings.QUANTITY_OF_RECORDS, len(records)))
         return False
     # Check for each record there are the right number of bytes
     for record in records:
         if len(record) != Settings.PACKET_LENGTH_NO_HEAD:
             print("Record length failure, record \n%s\n incorrect length, expected %s, got %s" % (record, Settings.PACKET_LENGTH_NO_HEAD, len(record)))
+            logging.debug("Record length failure, record \n%s\n incorrect length, expected %s, got %s" % (record, Settings.PACKET_LENGTH_NO_HEAD, len(record)))
             return False
-
+    logging.debug("Records Checked Successfully")
     return True
 
 def ValidateFile(rcds):
@@ -115,12 +130,15 @@ def DisplayFile(displayfile):
     Takes the given file and displays it to the screen
 
     """
+    logging.info("Display File")
     if len(displayfile) < 1:
         print("No file selected")
+        logging.debug("No Display file selected")
         return
     print("Displaying File, press enter between records, CTRL-C to cancel")
     try:
         for record in displayfile:
+            logging.debug("Display Record:%s" % record)
             print("%s" % record)
             input()
     except KeyboardInterrupt:
@@ -158,11 +176,14 @@ def LoadandValidateFile(chosenfile=""):
     and a data structure of the validate data
     If a file is given, it will try and load it.
     """
+    logging.info("Load and Validate File started")
     if chosenfile=="":
         # No file given, chose one
         chosenfile = ChooseFile()
+    print("Loading File")
     rcds = LoadFile(chosenfile)
     validatedfile = ValidateFile(rcds)
+    print("Loading Complete")
     return [validatedfile,rcds]
 
 def main():
@@ -203,7 +224,7 @@ def main():
 
 if __name__ == '__main__':
 
-    logging.basicConfig(filename="eWaterEmulator.txt", filemode="w", level=Settings.LG_LVL,
+    logging.basicConfig(filename="DataPacketLoader.txt", filemode="w", level=Settings.LG_LVL,
                         format='%(asctime)s:%(levelname)s:%(message)s')
 
 
