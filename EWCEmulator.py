@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 
 # CUrrently doing:
-#   Need to store the packet sent to resend if asked
-#   The packet sent is currently just the data segment, it needs the rest wrapping around it
-#   Creating PacketBuilder
 
 # TODO:
 #   upgrade pyserial to v3 and change commands marked #v3
@@ -16,9 +13,16 @@
 #   Add to the exit routine the printout of the eeprom
 #   When running in IoT mode,
 #       the gbl_EWC_pointer is set to -1 if no record is sent - output on end needs to handle this
+#   ValveOff to be implemented
 #
 # BUG: WHen I load the packet, I put all the binary values into strings!
-#   Need to convert the PacketGenerator and DataPacketLoader into using JSON.
+#   Need to convert the PacketGenerator and DataPacketLoader into using JSON or using binary mode
+#
+#       created a branch for this and checked out to it.
+#
+# BUG: chr(0x80).encode('utf-8') creates a \xc2\x80, is this ok??
+#
+# BUG: I am not convinced the XOR function is woring correctly
 #
 # Testing To Do
 #   Test CTS control
@@ -477,12 +481,15 @@ def CommsMessageBuilder(data):
 
     logging.debug("Comms Message being created / modified:%s" % data)
 
-    msg.append(data)
+    msg = msg + data
     msg.append(Settings.ETX)
 
     # Create and add the XOR checksum
     xor = 0
     for byte in (msg):
+
+#BUG: This is not splitting the data into its bits, but treating as oen big list
+
         logging.debug("byte being XOR'd:%s" % byte)
         xor = xor ^ int(binascii.b2a_hex(byte),16)
 
@@ -569,7 +576,7 @@ def ReadSPIEEPROM(message):
         value = Settings.DEF_DATALOG_PKT
     response_msg = Settings.RSP_POSITIVE
     response_msg.append(Settings.CMD_DATALOG_PACKET)
-    response_msg = response_msg + Settings.EWC_ID
+    response_msg.append(Settings.EWC_ID)
     response_msg = response_msg + value
 
     response = CommsMessageBuilder(response_msg)
@@ -579,7 +586,8 @@ def ValveOff():
     """
     Return a message stating how much water has been used
     """
-
+    #TODO: To be completed
+    print("Not yet implemented")
     return
 
 def ValidatePacket(message):
@@ -617,12 +625,12 @@ def DecodeandReply(fd,incoming):
 
     return reply
 
-def SendResponse(fd,response):
+def SendResponse(fd,send):
     """
     Send the response to the serial port given
     Returns True or False depending on sending success
     """
-    logging.info("Message to be sent is:%s" % response)
+    logging.info("Message to be sent is:%s" % send)
 
     try:
         ans = fd.write(b''.join(send))
@@ -681,14 +689,12 @@ def MaybeSendPacket(fd):
 #    if guess == 5:
         logging.info("Sending a message")
         response_msg = []
-        response_msg.append(Settings.RSP_POSITIVE)
-
         response_msg.append(Settings.CMD_DATALOG_PACKET)
         response_msg = response_msg + Settings.EWC_ID
         response_msg = response_msg + GetNextDataLogPacket()
         response = CommsMessageBuilder(response_msg)
 
-        SendResponse(fd,response_msg)
+        SendResponse(fd,response)
     else:
         logging.info("No message sent this time")
     return

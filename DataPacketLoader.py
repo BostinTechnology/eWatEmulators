@@ -46,6 +46,20 @@ def ChooseFile():
 
 def OpenFile(filename):
     """
+    Using binary mode
+    Open the file and return the identifier
+    """
+    try:
+        rd = open(filename, 'rb')
+        logging.debug("File %s opened as %s" % (filename, rd))
+    except:
+        print("Unable to Open File, program aborted")
+        logging.error("Unable to Open File %s, program aborted" % filename)
+        sys.exit()
+    return rd
+
+def OpenFileOLD(filename):
+    """
     Open the file and return the identifier
     """
     try:
@@ -67,7 +81,11 @@ def ReadFile(rd):
     # This is a method recommended which is supposed to be more memory efficient
     for record in rd:
         logging.debug("Record Read in:%s" % record)
-        records.append(record.split(','))
+        slashn = record.rfind(b'\n')
+        record = record[0:slashn]
+        logging.debug("slash n removed from the right:%s" % record)
+        records.append(record.split(','.encode('utf-8')))
+
 
 #    record = []
 #    morerecords = True
