@@ -80,22 +80,11 @@ def ReadFile(rd):
     records = []
     # This is a method recommended which is supposed to be more memory efficient
     for record in rd:
-        logging.debug("Record Read in:%s" % record)
         slashn = record.rfind(b'\n')
         record = record[0:slashn]
-        logging.debug("slash n removed from the right:%s" % record)
+        logging.debug("Record Read (With slash n removed from the right):%s" % record)
         records.append(record.split(','.encode('utf-8')))
 
-
-#    record = []
-#    morerecords = True
-#    while morerecords:
-#        record = rd.readline()
-#        logging.debug("Record Read in:%s" % record)
-#        if len(record) == 0:
-#            morerecords = False
-#        else:
-#            records.append(record.split(','))
     logging.debug("File Read and created records\n%s" % records)
     return records
 

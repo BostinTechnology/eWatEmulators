@@ -29,7 +29,7 @@ EWC_MEMORY = ['\x00', '\x01', '\x02', '\x03', '\x04', '\x05', '\x06', '\x07', '\
               '\xf0', '\xf1', '\xf2', '\xf3', '\xf4', '\xf5', '\xf6', '\xf7', '\xf8', '\xf9', '\xfa', '\xfb', '\xfc', '\xfd', '\xfe', '\xff',
              ]
 
-# Create a list of error codes and populate it with the posible values, first one is a positive response
+# Create a list of error codes and populate it with the posible values,, psoitive response is \x80
 ERROR_CODES = [b'\x01', b'\x02', b'\x03', b'\x04', b'\x05', b'\x06', b'\x07',
                 b'\x08', b'\x09', b'\x0a', b'\x0b', b'\x0c', b'\x0d', b'\x0e', b'\x0f', b'\x10', b'\x11']
 
@@ -86,7 +86,7 @@ RSP_NEGATIVE = chr(0x88).encode('utf-8')
 ETX = chr(0x03).encode('utf-8')
 VERSION_TERMINATOR = chr(0x00).encode('utf-8')
 
-# Comms Settings  (all measured in seconds)
+# Comms Settings (all measured in seconds) for the EWC interface
 #
 #          ________          ________
 #         |        |        |        |
@@ -103,4 +103,13 @@ COMMS_HIGH_TIME = 2 #5
 COMMS_LOW_TIME = 2 #5
 COMMS_DELAY_TIME = 0.250
 
+#Gadwell Timings
+COMMS_GAD_REPLY_TIMEOUT = 5          # How long to wait for a reply from the EWC
 
+#Battery Trip Levels
+BATT_TRIP_LVL1 = 0
+BATT_TRIP_LVL2 = 20
+BATT_TRIP_LVL3 = 40
+BATT_TRIP_LVL4 = 60
+BATT_TRIP_LVL5 = 80
+BATT_TRIP_LVL6 = 100

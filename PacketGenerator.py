@@ -9,7 +9,8 @@ It is intended to be used as part of the eWater Emulator, but it can be run inde
 # It may be necessary to open the file in binary mode, using 'wb'.
 #TODO: Building of the sample file needs to be able to add error details
 
-#BUG: The seperator between records is currnetloy attaching itself to the last value.
+#BUG: The seperator between records is currnetly attaching itself to the last value.
+# Handled within the loading program to strip it off before processing.
 
 import logging
 import random
@@ -68,30 +69,6 @@ def GeneratePacket(good=True, error=0, timenow=0):
     data_packet = data_packet + Settings.FLOW_TIME
     return data_packet
 
-def BuildSampleFileJSON(err):
-    """
-    NOT USED
-    Using binary mode in the file
-    Build a sample file, with each record being the next second
-    """
-    filename = input("Enter filename:")
-    fd = open(filename, 'w')
-    time = datetime.datetime.now()
-    for i in range(0,Settings.QUANTITY_OF_RECORDS):
-        time = time + datetime.timedelta(seconds=1)
-        data = GeneratePacket(err, (i % 16), time)
-        json.dump(data, fd, ensure_ascii=False)
-#        for j in range(0,len(data)):
-##            fd.write(str(data[j]))
-#            fd.write(data[j])
-#            if j != len(data)-1:
-##                fd.write(",")
-#                fd.write(",".encode('utf-8'))
-
-        fd.write("\n".encode('utf-8'))      # BUG: This is not working right.
-    fd.close
-    return
-
 def BuildSampleFile(err):
     """
     Using binary mode in the file
@@ -114,25 +91,6 @@ def BuildSampleFile(err):
         fd.write("\n".encode('utf-8'))      # BUG: This is not working right.
     fd.close
     return
-
-def BuildSampleFile_OLD(err):
-    """
-    NOT USED
-    Using file write
-    Build a sample file, with each record being the next second
-    """
-    filename = input("Enter filename:")
-    fd = open(filename, 'w')
-    time = datetime.datetime.now()
-    for i in range(0,Settings.QUANTITY_OF_RECORDS):
-        time = time + datetime.timedelta(seconds=1)
-        data = GeneratePacket(err, (i % 16), time)
-        for j in range(0,len(data)):
-            fd.write(str(data[j]))
-            if j != len(data)-1:
-                fd.write(",")
-        fd.write("\n")
-    fd.close
 
 def HelpText():
     """

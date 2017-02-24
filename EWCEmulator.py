@@ -10,15 +10,8 @@
 #   Consider adding the packets into a class so I can manipulate them easier maybe...
 #   improve code by having writedata respond with a message if failed
 #   - stops it repeating the same 5 lines of code
-#   Add to the exit routine the printout of the eeprom
-#   When running in IoT mode,
-#       the gbl_EWC_pointer is set to -1 if no record is sent - output on end needs to handle this
 #   ValveOff to be implemented
-#
-# BUG: WHen I load the packet, I put all the binary values into strings!
-#   Need to convert the PacketGenerator and DataPacketLoader into using JSON or using binary mode
-#
-#       created a branch for this and checked out to it.
+#   I think some of my settings (Packet length esp) are wrong
 #
 # BUG: chr(0x80).encode('utf-8') creates a \xc2\x80, is this ok??
 #
@@ -832,6 +825,12 @@ if __name__ == '__main__':
     logging.info("Capturing gbl_EWC_Records data")
     for rcd in range(0, gbl_EWC_Pointer):
         logging.info("%s -> %s" %(rcd, gbl_EWC_Records[rcd]))
+    logging.info("Capturing the EEPROM Map")
+    for i in range(0,len(gbl_EWC_Memory),8):
+        logging.info("%s : %s: %s: %s: %s: %s: %s: %s" %(gbl_EWC_Memory[i],gbl_EWC_Memory[i+1],
+                gbl_EWC_Memory[i+2],gbl_EWC_Memory[i+3],gbl_EWC_Memory[i+4],gbl_EWC_Memory[i+5],
+                gbl_EWC_Memory[i+6],gbl_EWC_Memory[i+7]))
+
     if conn != "":
         conn.close()
     GPIO.cleanup()
