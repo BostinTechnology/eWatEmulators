@@ -38,8 +38,6 @@ import traceback
 import binascii
 import random
 
-#import PacketGenerator
-#import DataPacketLoader
 import Settings
 
 
