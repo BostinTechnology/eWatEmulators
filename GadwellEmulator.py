@@ -14,18 +14,13 @@
 
 # TODO:
 #   upgrade pyserial to v3 and change commands marked #v3
-#   Allow packet to send to be chosen
-#   Add in the Bootloader functionality
 #   Call DataPacketLoader and PacketGenerator from within this main menu
 #   Consider adding the packets into a class so I can manipulate them easier maybe...
 #   improve code by having writedata respond with a message if failed
 #   - stops it repeating the same 5 lines of code
-#   ValveOff to be implemented
 #   I think some of my settings (Packet length esp) are wrong
 #
 # BUG: chr(0x80).encode('utf-8') creates a \xc2\x80, is this ok??
-#
-# BUG: I am not convinced the XOR function is woring correctly
 #
 #-------------------------------------------------------------------------
 
@@ -179,9 +174,6 @@ def CommsMessageBuilder(data):
     # Create and add the XOR checksum
     xor = 0
     for byte in (msg):
-
-#BUG: This is not splitting the data into its bits, but treating as oen big list
-
         logging.debug("byte being XOR'd:%s" % byte)
         xor = xor ^ int(binascii.b2a_hex(byte),16)
 
@@ -308,8 +300,6 @@ def Menu_IoTSend(fd):
 
     return
 
-
-
 def HelpText():
     """
     Display the list of commands possible for the program
@@ -354,8 +344,6 @@ def main():
         else:
             print("Unknown Option")
     return
-
-
 
 if __name__ == '__main__':
 

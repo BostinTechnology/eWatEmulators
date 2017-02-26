@@ -15,8 +15,6 @@
 #
 # BUG: chr(0x80).encode('utf-8') creates a \xc2\x80, is this ok??
 #
-# BUG: I am not convinced the XOR function is woring correctly
-#
 # Testing To Do
 #   Test CTS control
 #   Test data packet sending
@@ -480,9 +478,6 @@ def CommsMessageBuilder(data):
     # Create and add the XOR checksum
     xor = 0
     for byte in (msg):
-
-#BUG: This is not splitting the data into its bits, but treating as oen big list
-
         logging.debug("byte being XOR'd:%s" % byte)
         xor = xor ^ int(binascii.b2a_hex(byte),16)
 
