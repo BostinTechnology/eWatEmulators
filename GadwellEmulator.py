@@ -145,7 +145,7 @@ def WaitForResponse(fd):
             print("Timeout - No response received")
             logging.info("Timeout - No response received")
 
-        if CheckforMessage(fd):
+        if CheckForMessage(fd):
             reply = ReadMessage(fd)
             print("Message Received:%s" % reply)
             log.info("Message Received: %s" % reply)
@@ -177,6 +177,7 @@ def CommsMessageBuilder(data):
     msg = msg + data
     msg.append(Settings.ETX)
 
+
     # Create and add the XOR checksum
     xor = 0
     for byte in (msg):
@@ -197,7 +198,7 @@ def SetRTCClock():
     request_msg = []
     logging.debug("Sending RTC Clock / Calendar")
     request_msg.append(Settings.CMD_SET_RTC_CLOCK)
-    request_msg.append(Settings.EWC_ID)
+    request_msg = request_msg + Settings.EWC_ID
 
     # Date and Time
     timenow = datetime.datetime.now()
@@ -218,7 +219,7 @@ def GetMissingDatalogPacket():
     Request the missing datalog packet, enter number required
     """
     request_msg = []
-    logging.debug("Requesting a Missing Datalog Packet")
+    logging.info("Requesting a Missing Datalog Packet")
 
     pkt = -1
     while pkt == -1:
@@ -229,9 +230,11 @@ def GetMissingDatalogPacket():
         elif int(pkt) > Settings.QUANTITY_OF_RECORDS or int(pkt) < 0:
             print("Only numbers in the range 0 to %s are allowed\n%s" % Settings.QUANTITY_OF_RECORDS)
             pkt = -1
+    pkt = int(pkt)
+    logging.debug("Datalog Packet chosen:%s" % pkt)
     print("Sending a request")
     request_msg.append(Settings.CMD_MISSING_DATALOG_REQ)
-    request_msg.append(Settings.EWC_ID)
+    request_msg = request_msg + Settings.EWC_ID
     request_msg.append(binascii.a2b_hex('{:04x}'.format(pkt)))
 
     request = CommsMessageBuilder(request_msg)
@@ -241,18 +244,23 @@ def AssetStatus():
     """
     Send the Asset Status
     """
-    print("Not yet implemented")
-    return
+    request_msg = []
+    logging.debug("Send Asset Status")
+
+    request_msg.append(Settings.CMD_ASSET_STATUS)
+    request_msg = request_msg + Settings.EWC_ID
+    print("Asset Status - Not yet implemented")
+    return request_msg
 
 def SetBatteryVoltLvls():
     """
     Send the Battery Voltage Levels
     """
-    request_mssg = []
+    request_msg = []
     logging.debug("Set Battery Voltage Levels")
 
     request_msg.append(Settings.CMD_SET_BATTERY_VOLT_LVLS)
-    request_msg.append(Settings.EWC_ID)
+    request_msg = request_msg + Settings.EWC_ID
     request_msg.append(binascii.a2b_hex('{:02x}'.format(Settings.BATT_TRIP_LVL1)))
     request_msg.append(binascii.a2b_hex('{:02x}'.format(Settings.BATT_TRIP_LVL2)))
     request_msg.append(binascii.a2b_hex('{:02x}'.format(Settings.BATT_TRIP_LVL3)))
@@ -277,7 +285,7 @@ def Menu_IoTSend(fd):
     print("e - Return to previous menu")
 
     while True:
-        choice = input("Choose:")
+        choice = input("Choose command to send:")
         if choice =="1":
             to_send = SetRTCClock()
         elif choice =="2":
@@ -285,7 +293,7 @@ def Menu_IoTSend(fd):
         elif choice =="3":
             to_send = AssetStatus()
         elif choice =="4":
-            to_send = SetBatteryVolt()
+            to_send = SetBatteryVoltLvls()
         elif choice.upper() =="E":
             break
         else:
