@@ -574,9 +574,11 @@ def ValveOff():
     """
     Return a message stating how much water has been used
     """
-    #TODO: To be completed
-    print("Not yet implemented")
-    return
+    logging.debug("Valve Off Response")
+    response_cmd = Settings.RSP_POSITIVE
+    response_cmd = response_cmd + Settings.FLOW_COUNT
+    response = CommsMessageBuilder(response_cmd)
+    return response
 
 def ValidatePacket(message):
     """
