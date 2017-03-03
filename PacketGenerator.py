@@ -34,7 +34,7 @@ def GeneratePacket(good=True, error=0, timenow=0):
 
     # Error Code
     if good:
-        data_packet.append(Settings.ERROR_CODES[0])
+        data_packet.append(Settings.NO_ERROR)
     else:
         data_packet.append(Settings.ERROR_CODES[error])
 

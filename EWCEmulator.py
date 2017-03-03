@@ -39,7 +39,7 @@ import Settings
 
 BAUDRATE = 9600         # The speed of the comms
 PORT = "/dev/serial0"   # The port being used for the comms
-TIMEOUT = 1             # The maximum time allowed to receive a message
+TIMEOUT = 0.5           # The maximum time allowed to receive a message
 GPIO_CTS = 11           # The CTS line, also known as GPIO17
 
 # EWC_Records holds all the records generated or send to the IoT
@@ -297,12 +297,13 @@ def SendErrorPacket(fd):
     #Print the error codes
 
     while err ==0:
-        err = input("Select Error Code (1 - %s)" % len(Settings.ERROR_CODES))
+        err = input("Select Error Code (0 - %s)" % len(Settings.ERROR_CODES))
         if err.isdigit == False:
             print("Enter a number please")
             err = 0
         else:
             # Need to validate the error reqeusted is in the list of error codes
+            err = int(err)
             # Convert to a binary number
             err_bin = binascii.unhexlify('{:02d}'.format(int(err)))
             if err_bin not in Settings.ERROR_CODES:
@@ -432,21 +433,27 @@ def Menu_BadPacket(fd):
 
 
 
-
 def ReadMessage(fd):
     """
     Read the data from the comms port
     """
-    char = ""
-    message = ""
-    while char != "":
+    logging.info("Reading a message")
+    moredata = True
+    char = b''
+    message = b''
+    while moredata:
         try:
             char = fd.read()
+            logging.debug("Character returned from serial port:%s" % char)
         except:
             char = ""
-        if char != "":
-            logging.debug("Character returned from serial port:%s" % char)
+            logging.error("Error reading the serial port")
+            moredata = False
+
+        if len(char) > 0:
             message = message + char
+        else:
+            moredata = False
     logging.info("Message received from the serial port:%s" % message)
     #TODO: Message is in bytes, do I need to convert it??????
     return message
@@ -458,7 +465,7 @@ def CheckForMessage(fd):
     """
     data_avail = False
     try:
-        data_avail = fd.in_waiting()        #V3
+        data_avail = fd.inWaiting()        #V3
     except:
         data_avail = False
 
