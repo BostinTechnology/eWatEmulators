@@ -12,12 +12,14 @@
 #   - stops it repeating the same 5 lines of code
 #   ValveOff to be implemented
 #   I think some of my settings (Packet length esp) are wrong
+#   Packet Validation is not yet implemented
 #
 # BUG: chr(0x80).encode('utf-8') creates a \xc2\x80, is this ok??
 #
+#
 # Testing To Do
 #   Test CTS control
-#   Test data packet sending
+#   Test IoT Reply - failed lat time I tried.
 # BUGS
 #   conn in the try except routine at the end is not defined!
 #
@@ -209,7 +211,7 @@ def Menu_ControlCTS(fd):
         speed =0
         while speed ==0:
             speed = input("Set time period (in seconds)")
-            if speed.isdigit == False:
+            if speed.isdigit() == False:
                 print("Enter a number please")
                 speed = 0
             elif speed < 0:
@@ -257,7 +259,7 @@ def SendRepeatingPacket(fd):
     speed =0
     while speed ==0:
         speed = input("Set time period (in seconds)")
-        if speed.isdigit == False:
+        if speed.isdigit() == False:
             print("Enter a number please")
             speed = 0
         else:
@@ -295,23 +297,24 @@ def SendErrorPacket(fd):
     """
     err =0
     #Print the error codes
-
-    while err ==0:
-        err = input("Select Error Code (0 - %s)" % len(Settings.ERROR_CODES))
-        if err.isdigit == False:
+    logging.info("Sending a Error Packet")
+    while err == 0:
+        err = input("Enter Error Code (decimal only)")
+        if err.isdigit() == False:
             print("Enter a number please")
             err = 0
         else:
             # Need to validate the error reqeusted is in the list of error codes
             err = int(err)
             # Convert to a binary number
-            err_bin = binascii.unhexlify('{:02d}'.format(int(err)))
+            err_bin = binascii.unhexlify('{:02x}'.format(int(err)))
             if err_bin not in Settings.ERROR_CODES:
                 print("Only numbers listed below are allowed\n%s" % Settings.ERROR_CODES)
                 err = 0
+    logging.debug("Error Code Entered / Selected: %s / %s" % (err, Settings.ERROR_CODES.index(err_bin)))
     print("Sending a packet")
     # Get a packet
-    to_send = GenerateErrorPacket(err)
+    to_send = GenerateErrorPacket(Settings.ERROR_CODES.index(err_bin) )
 
 
     # Send a packet
@@ -385,13 +388,9 @@ def GenerateNoID():
     packet = DataLogPacketBuilder(datalog, inc_id=False)
     return packet
 
-def Menu_BadPacket(fd):
+def HelpMenu_BadPacket():
     """
-    Provide the menu to allow the different bad packets to be sent / received
-    - Too small / big
-    - Out of Sync
-    - Wrong ID / No ID
-    - CRC Error
+    Help for the Bad Packet Menu
     """
     print("\nSend a bad Packet from the EWC\n")
     print("Menu Options")
@@ -402,27 +401,44 @@ def Menu_BadPacket(fd):
     print("4 - Out of Sync Backward")
     print("5 - Wrong ID")
     print("6 - No ID")
-    print("any other key to return to previous menu")
+    print("h - This help information")
+    print("e - Return to previous menu")
+    return
 
-    choice = input("Choose:")
-    if choice =="1":
-        to_send = GenerateTooShort()
-    elif choice =="2":
-        to_send = GenerateTooBig()
-    elif choice =="3":
-        to_send = GenerateOutofSyncForward()
-    elif choice =="4":
-        to_send = GenerateOutofSyncBackward()
-    elif choice =="5":
-        to_send = GenerateWrongID()
-    elif choice =="6":
-        to_send = GenerateNoID()
+def Menu_BadPacket(fd):
+    """
+    Provide the menu to allow the different bad packets to be sent / received
+    - Too small / big
+    - Out of Sync
+    - Wrong ID / No ID
+    - CRC Error
+    """
+    HelpMenu_BadPacket()
+    choice = ""
+    while choice.upper() !="E":
+        choice = input("Choose:")
+        if choice =="1":
+            to_send = GenerateTooShort()
+        elif choice =="2":
+            to_send = GenerateTooBig()
+        elif choice =="3":
+            to_send = GenerateOutofSyncForward()
+        elif choice =="4":
+            to_send = GenerateOutofSyncBackward()
+        elif choice =="5":
+            to_send = GenerateWrongID()
+        elif choice =="6":
+            to_send = GenerateNoID()
+        elif choice.upper() =="H":
+            HelpMenu_BadPacket()
 
-    ans = WriteDataBinary(fd,to_send)
-    if ans > 0:
-        print("Packet Sent: %s" % to_send)
-    else:
-        print("Failed to Send Packet")
+        if choice.upper() !="H":
+            # Send the generated data packet unless help chosen
+            ans = WriteDataBinary(fd,to_send)
+            if ans > 0:
+                print("Packet Sent: %s" % to_send)
+            else:
+                print("Failed to Send Packet")
     return
 
 ########################################################################
@@ -814,7 +830,7 @@ def main():
 if __name__ == '__main__':
 
     conn = ""
-    logging.basicConfig(filename="eWaterEmulator.txt", filemode="w", level=Settings.LG_LVL,
+    logging.basicConfig(filename="EWCEmulator.txt", filemode="w", level=Settings.LG_LVL,
                         format='%(asctime)s:%(levelname)s:%(message)s')
 
     try:

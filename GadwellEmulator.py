@@ -150,7 +150,7 @@ def WaitForResponse(fd):
         if datalength > 0:
             reply = ReadMessage(fd)
             print("Message Received:%s" % reply)
-            log.info("Message Received: %s" % reply)
+            logging.info("Message Received: %s" % reply)
             waiting = False
 
     return reply
@@ -223,7 +223,7 @@ def GetMissingDatalogPacket():
     pkt = -1
     while pkt == -1:
         pkt = input("Select Datalog Packet (1 - %s)" % Settings.QUANTITY_OF_RECORDS)
-        if pkt.isdigit == False:
+        if pkt.isdigit() == False:
             print("Enter a number please")
             pkt = -1
         elif int(pkt) > Settings.QUANTITY_OF_RECORDS or int(pkt) < 0:

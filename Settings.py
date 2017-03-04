@@ -31,7 +31,7 @@ EWC_MEMORY = ['\x00', '\x01', '\x02', '\x03', '\x04', '\x05', '\x06', '\x07', '\
 
 # Create a list of error codes that can be used in the datalog packet responses and populate it
 #    with the posible values, no error is \x80
-ERROR_CODES = [b'\x01', b'\x02', b'\x03', b'\x04', b'\x05', b'\x06', b'\x07',
+ERROR_CODES = [b'\xff', b'\x01', b'\x02', b'\x03', b'\x04', b'\x05', b'\x06', b'\x07',
                 b'\x08', b'\x09', b'\x0a', b'\x0b', b'\x0c', b'\x0d', b'\x0e', b'\x0f', b'\x10', b'\x11']
 NO_ERROR = b'\x80'
 
