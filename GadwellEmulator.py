@@ -140,7 +140,7 @@ def WaitForResponse(fd):
     waiting = True
     reply = ""
     while waiting:
-        if endtime > datetime.datetime.now():
+        if endtime < datetime.datetime.now():
             waiting = False
             reply = ""
             print("Timeout - No response received")

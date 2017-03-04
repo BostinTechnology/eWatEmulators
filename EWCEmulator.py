@@ -490,6 +490,9 @@ def CheckForMessage(fd):
 def CommsMessageBuilder(data):
     """
     Takes the given data and returns the message to be sent to the serial port
+    Data passed in must be a list
+
+BUG: Data being passed is is not always a list.
     """
     msg = []
 
@@ -513,8 +516,9 @@ def PositiveReply():
     Generate a positive response to send
     ETX and the XOR, handled by the CommsMessaegBuilder
     """
+    response_cmd = []
     logging.debug("Positive Response Required")
-    response_cmd = Settings.RSP_POSITIVE
+    response_cmd.append(Settings.RSP_POSITIVE)
     response = CommsMessageBuilder(response_cmd)
     return response
 
@@ -523,8 +527,9 @@ def NegativeReply():
     Generate a positive response to send
     ETX and the XOR, handled by the CommsMessaegBuilder
     """
+    response_cmd = []
     logging.debug("Negative Response Required")
-    response_cmd = Settings.RSP_NEGATIVE
+    response_cmd.append(Settings.RSP_NEGATIVE)
     response = CommsMessageBuilder(response_cmd)
     return response
 
@@ -532,8 +537,10 @@ def VersionMessage():
     """
     Return the version information
     """
+    response = []
     logging.debug("Version Message Response Required")
-    response = Settings.VERSION_MESSAGE + Settings.VERSION_TERMINATOR
+    response.append(Settings.VERSION_MESSAGE)
+    response.append(Settings.VERSION_TERMINATOR)
     return response
 
 def WritePICEEPROM(message):
@@ -597,9 +604,10 @@ def ValveOff():
     """
     Return a message stating how much water has been used
     """
+    response_cmd = []
     logging.debug("Valve Off Response")
-    response_cmd = Settings.RSP_POSITIVE
-    response_cmd = response_cmd + Settings.FLOW_COUNT
+    response_cmd.append(Settings.RSP_POSITIVE)
+    response_cmd.append(Settings.FLOW_COUNT)
     response = CommsMessageBuilder(response_cmd)
     return response
 
@@ -703,7 +711,7 @@ def MaybeSendPacket(fd):
         logging.info("Sending a message")
         response_msg = []
         response_msg.append(Settings.CMD_DATALOG_PACKET)
-        response_msg = response_msg + Settings.EWC_ID
+        response_msg = response_msg + Settings.EWC_IDgood
         response_msg = response_msg + GetNextDataLogPacket()
         response = CommsMessageBuilder(response_msg)
 
