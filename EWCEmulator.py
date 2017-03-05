@@ -631,8 +631,9 @@ def DecodeandReply(fd,incoming):
     reply = ""
     if ValidatePacket(incoming):
         # Strip the packet apart into the key elements
-        # first byte is the command
-        command = incoming[Settings.LOC_CMD_BYTE_START]
+        # first byte is the command, but for some reason, I need to convert the int back into a binary string!
+        command = incoming[Settings.LOC_CMD_BYTE_START].to_bytes(1, byteorder='big')
+        logging.debug("CMD byte extracted from the message:%s" % command)
         if command == Settings.CMD_MESSAGE_COMMAND:
             reply = VersionMessage()
         elif command == Settings.CMD_WRITE_PIC_EEPROM:
