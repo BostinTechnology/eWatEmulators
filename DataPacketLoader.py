@@ -20,6 +20,9 @@ The returned structure consists of a list of records, each record consists of th
 #TODO: Chosefile can return an empty file, so there might need to be some more validation within it
 #       or further processing to continue or abort
 
+#TODO: Retest as part of the encode change
+
+
 import os
 import sys
 import logging
@@ -83,7 +86,7 @@ def ReadFile(rd):
         slashn = record.rfind(b'\n')
         record = record[0:slashn]
         logging.debug("Record Read (With slash n removed from the right):%s" % record)
-        records.append(record.split(','.encode('utf-8')))
+        records.append(record.split(b','))              #TODO: changed as part of encode change
 
     logging.debug("File Read and created records\n%s" % records)
     return records

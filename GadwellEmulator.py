@@ -20,7 +20,7 @@
 #   - stops it repeating the same 5 lines of code
 #   I think some of my settings (Packet length esp) are wrong
 #
-# BUG: chr(0x80).encode('utf-8') creates a \xc2\x80, is this ok??
+# BUG: chr(0x80).encode('utf-8') creates a \xc2\x80, changed, ready to test
 #
 #-------------------------------------------------------------------------
 
@@ -186,7 +186,7 @@ def CommsMessageBuilder(data):
         logging.debug("byte being XOR'd:%s" % byte)
         xor = xor ^ int(binascii.b2a_hex(byte),16)
 
-    msg.append(binascii.a2b_hex('{:02x}'.format(xor).encode('utf-8')))
+    msg.append(binascii.a2b_hex('{:02x}'.format(xor)))
     logging.info("Comms Message generated: %s" % msg)
     return msg
 
@@ -203,12 +203,12 @@ def SetRTCClock():
     timenow = datetime.datetime.now()
     logging.debug("Date & Time being used:%s" % timenow)
 
-    request_msg.append(binascii.a2b_hex('{:02d}'.format(timenow.second).encode('utf-8')))
-    request_msg.append(binascii.a2b_hex('{:02d}'.format(timenow.minute).encode('utf-8')))
-    request_msg.append(binascii.a2b_hex('{:02d}'.format(timenow.hour).encode('utf-8')))
-    request_msg.append(binascii.a2b_hex('{:02d}'.format(timenow.day).encode('utf-8')))
-    request_msg.append(binascii.a2b_hex('{:02d}'.format(timenow.month).encode('utf-8')))
-    request_msg.append(binascii.a2b_hex('{:02d}'.format(timenow.year)[2:4].encode('utf-8')))
+    request_msg.append(binascii.a2b_hex('{:02d}'.format(timenow.second)))
+    request_msg.append(binascii.a2b_hex('{:02d}'.format(timenow.minute)))
+    request_msg.append(binascii.a2b_hex('{:02d}'.format(timenow.hour)))
+    request_msg.append(binascii.a2b_hex('{:02d}'.format(timenow.day)))
+    request_msg.append(binascii.a2b_hex('{:02d}'.format(timenow.month)))
+    request_msg.append(binascii.a2b_hex('{:02d}'.format(timenow.year)[2:4]))
 
     request = CommsMessageBuilder(request_msg)
     return request

@@ -12,6 +12,9 @@ It is intended to be used as part of the eWater Emulator, but it can be run inde
 #BUG: The seperator between records is currnetly attaching itself to the last value.
 # Handled within the loading program to strip it off before processing.
 
+#TODO: Retest as part of the encode change
+# changed time calculation as part of the packet generation
+
 import logging
 import random
 import datetime
@@ -43,12 +46,12 @@ def GeneratePacket(good=True, error=0, timenow=0):
         timenow = datetime.datetime.now()
     logging.debug("Date & Time being used:%s" % timenow)
 
-    data_packet.append(binascii.a2b_hex('{:02d}'.format(timenow.second).encode('utf-8')))
-    data_packet.append(binascii.a2b_hex('{:02d}'.format(timenow.minute).encode('utf-8')))
-    data_packet.append(binascii.a2b_hex('{:02d}'.format(timenow.hour).encode('utf-8')))
-    data_packet.append(binascii.a2b_hex('{:02d}'.format(timenow.day).encode('utf-8')))
-    data_packet.append(binascii.a2b_hex('{:02d}'.format(timenow.month).encode('utf-8')))
-    data_packet.append(binascii.a2b_hex('{:02d}'.format(timenow.year)[2:4].encode('utf-8')))
+    data_packet.append(binascii.a2b_hex('{:02d}'.format(timenow.second)))
+    data_packet.append(binascii.a2b_hex('{:02d}'.format(timenow.minute)))
+    data_packet.append(binascii.a2b_hex('{:02d}'.format(timenow.hour)))
+    data_packet.append(binascii.a2b_hex('{:02d}'.format(timenow.day)))
+    data_packet.append(binascii.a2b_hex('{:02d}'.format(timenow.month)))
+    data_packet.append(binascii.a2b_hex('{:02d}'.format(timenow.year)[2:4]))
 
     # 4 byte card UUID
     data_packet = data_packet + Settings.UUID
@@ -86,9 +89,9 @@ def BuildSampleFile(err):
             fd.write(data[j])
             if j != len(data)-1:
 #                fd.write(",")
-                fd.write(",".encode('utf-8'))
+                fd.write(b',')
 
-        fd.write("\n".encode('utf-8'))      # BUG: This is not working right.
+        fd.write(b'\n')      # BUG: This is not working right.      # TODO: Retest as changed as part of encode removal
     fd.close
     return
 

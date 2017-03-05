@@ -15,7 +15,7 @@
 #   Packet Validation is not yet implemented
 #
 # BUG: chr(0x80).encode('utf-8') creates a \xc2\x80, This needs to be fixed.
-#
+#       changed, ready to test
 #
 # Testing To Do
 #   Test CTS control
@@ -154,8 +154,8 @@ def DataLogPacketBuilder(data, inc_id=True, ewc_id=""):
         logging.debug("EWC ID NOT included")
     msg = msg + data
     # build pointer, lower part is simply AND'd with 0xFF, while the upper part is AND'd with 0xff00 and then shited 8 bits
-    ptr_l = hex(gbl_EWC_Pointer & 0x000000ff).encode('utf-8')
-    ptr_h = hex((gbl_EWC_Pointer & 0x0000ff00)>>8).encode('utf-8')
+    ptr_l = (gbl_EWC_Pointer & 0x000000ff).to_bytes(1, byteorder='big')
+    ptr_h = ((gbl_EWC_Pointer & 0x0000ff00)>>8).to_bytes(1, byteorder='big')        #TODO: Retest due to encoding
     msg.append(ptr_h)
     msg.append(ptr_l)
     msg.append(Settings.ETX)
@@ -166,7 +166,7 @@ def DataLogPacketBuilder(data, inc_id=True, ewc_id=""):
         logging.debug("byte being XOR'd:%s" % byte)
         xor = xor ^ int(binascii.b2a_hex(byte),16)
 
-    msg.append(binascii.a2b_hex('{:02x}'.format(xor).encode('utf-8')))
+    msg.append(binascii.a2b_hex('{:02x}'.format(xor)))          #TODO: Retest due to encoding
     logging.info("Datalog Packet:%s" % msg)
     gbl_EWC_Records[gbl_EWC_Pointer] = msg
     return msg
@@ -507,7 +507,7 @@ BUG: Data being passed is is not always a list.
         logging.debug("byte being XOR'd:%s" % byte)
         xor = xor ^ int(binascii.b2a_hex(byte),16)
 
-    msg.append(binascii.a2b_hex('{:02x}'.format(xor).encode('utf-8')))
+    msg.append(binascii.a2b_hex('{:02x}'.format(xor)))      #TODO: Retest due to encoding
     logging.info("Comms Message generated: %s" % msg)
     return msg
 
@@ -575,7 +575,7 @@ def ReadPICEEPROM(message):
         logging.error("Failed to Read PIC memory, possibly out of range")
         logging.debug("Useful Information addr:%s" % addr)
     response = Settings.RSP_POSITIVE
-    response = response + value.encode('utf-8')
+    response = response + value
     return response
 
 def ReadSPIEEPROM(message):
@@ -693,8 +693,8 @@ def GetNextDataLogPacket():
     logging.debug("Datalog Packet Being used:%s" % gbl_EWC_Records[gbl_EWC_Pointer])
     msg = msg + gbl_EWC_Records[gbl_EWC_Pointer]
     # build pointer, lower part is simply AND'd with 0xFF, while the upper part is AND'd with 0xff00 and then shited 8 bits
-    ptr_l = hex(gbl_EWC_Pointer & 0x000000ff).encode('utf-8')
-    ptr_h = hex((gbl_EWC_Pointer & 0x0000ff00)>>8).encode('utf-8')
+    ptr_l = (gbl_EWC_Pointer & 0x000000ff).to_bytes(1, byteorder='big')
+    ptr_h = ((gbl_EWC_Pointer & 0x0000ff00)>>8).to_bytes(1, byteorder='big')
     msg.append(ptr_h)
     msg.append(ptr_l)
 
