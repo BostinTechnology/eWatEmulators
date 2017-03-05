@@ -33,8 +33,9 @@ EWC_MEMORY = [b'\x00', b'\x01', b'\x02', b'\x03', b'\x04', b'\x05', b'\x06', b'\
 
 # Create a list of error codes that can be used in the datalog packet responses and populate it
 #    with the posible values, no error is \x80
-ERROR_CODES = [b'\xff', b'\x01', b'\x02', b'\x03', b'\x04', b'\x05', b'\x06', b'\x07',
-                b'\x08', b'\x09', b'\x0a', b'\x0b', b'\x0c', b'\x0d', b'\x0e', b'\x0f', b'\x10', b'\x11']
+ERROR_CODES = [b'\xff', b'\x01', b'\x02', b'\x03', b'\x04', b'\x05', b'\x06', b'\x07', b'\x08', b'\x09',
+                b'\x0a', b'\x0b', b'\x0c', b'\x0d', b'\x0e', b'\x0f', b'\x10', b'\x11', b'\x12']
+
 NO_ERROR = b'\x80'
 
 # Default Datalog Packet
@@ -51,9 +52,9 @@ FLOW_COUNT = [b'\x01', b'\x10']
 FLOW_TIME = [b'\x1A', b'\x1A']
 
 
-PACKET_LENGTH_ALL = 27              # Number of bytes in the packet
+PACKET_LENGTH_ALL = 37          # Number of bytes in the packet
 QUANTITY_OF_RECORDS = 1024      # The number of records within the system
-PACKET_LENGTH_NO_HEAD = 27      # The length of the record without the header parts.
+PACKET_LENGTH_NO_HEAD = 27      # The length of the record without the header or footer parts, jsut the data record.
 
 # Logging level to be used
 LG_LVL = logging.DEBUG
@@ -62,6 +63,8 @@ LG_LVL = logging.DEBUG
 LOC_CMD_BYTE_START = 0
 LOC_ID_BYTE_START = 1
 LOC_DATA_START = 5
+LOC_BLOCK_START = 5             # WHere the block number is in the Request Missing datalog packet message
+LOC_ADDR_START = 6              # Where the address is in the Request Missing datalog packet message
 
 #Datalog Commands
 CMD_DATALOG_PACKET = bytes.fromhex('44')
@@ -89,6 +92,7 @@ RSP_NEGATIVE = bytes.fromhex('88')
 #Other bits
 ETX = bytes.fromhex('03')
 VERSION_TERMINATOR = bytes.fromhex('00')
+BLOCK_COUNT = bytes.fromhex('03')
 
 # Comms Settings (all measured in seconds) for the EWC interface
 #

@@ -13,6 +13,8 @@
 #   ValveOff to be implemented
 #   I think some of my settings (Packet length esp) are wrong
 #   Packet Validation is not yet implemented
+#   I've got DataLogPacketBuilder and GenNextDatalogPacket that do virtualy identical things.
+#       They need to be rationalised.
 #
 # BUG: chr(0x80).encode('utf-8') creates a \xc2\x80, This needs to be fixed.
 #       changed, ready to test
@@ -155,7 +157,7 @@ def DataLogPacketBuilder(data, inc_id=True, ewc_id=""):
     msg = msg + data
     # build pointer, lower part is simply AND'd with 0xFF, while the upper part is AND'd with 0xff00 and then shited 8 bits
     ptr_l = (gbl_EWC_Pointer & 0x000000ff).to_bytes(1, byteorder='big')
-    ptr_h = ((gbl_EWC_Pointer & 0x0000ff00)>>8).to_bytes(1, byteorder='big')        #TODO: Retest due to encoding
+    ptr_h = ((gbl_EWC_Pointer & 0x0000ff00)>>8).to_bytes(1, byteorder='big')
     msg.append(ptr_h)
     msg.append(ptr_l)
     msg.append(Settings.ETX)
@@ -166,7 +168,7 @@ def DataLogPacketBuilder(data, inc_id=True, ewc_id=""):
         logging.debug("byte being XOR'd:%s" % byte)
         xor = xor ^ int(binascii.b2a_hex(byte),16)
 
-    msg.append(binascii.a2b_hex('{:02x}'.format(xor)))          #TODO: Retest due to encoding
+    msg.append(binascii.a2b_hex('{:02x}'.format(xor)))
     logging.info("Datalog Packet:%s" % msg)
     gbl_EWC_Records[gbl_EWC_Pointer] = msg
     return msg
@@ -491,8 +493,6 @@ def CommsMessageBuilder(data):
     """
     Takes the given data and returns the message to be sent to the serial port
     Data passed in must be a list
-
-BUG: Data being passed is is not always a list.
     """
     msg = []
 
@@ -582,9 +582,13 @@ def ReadSPIEEPROM(message):
     """
     Respond with a 36 byte SPI eeprom Datalog packet from the given location
     """
+    print("Not yet implemented and not clear in the spec")
+    logging.error("Not yet implemented and not clear in the spec")
+
+    response_msg = []
     logging.debug("Reading SPI EEPROM Response required")
     global gbl_EWC_Records
-    addr = int(binascii.b2a_hex(message[Settings.LOC_DATA_START:Settings.LOC_DATA_START+1]),16)          # The address is the first byte
+    addr = int(binascii.b2a_hex(message[Settings.LOC_ADDR_START:Settings.LOC_ADDR_START+1]),16)          # The address is 2 bytes long
     try:
         value = gbl_EWC_Records[addr]
     except:
@@ -592,8 +596,8 @@ def ReadSPIEEPROM(message):
         logging.error("Failed to Read EWC Record, possibly out of range")
         logging.debug("Useful Information addr:%s" % addr)
         value = Settings.DEF_DATALOG_PKT
-    response_msg = Settings.RSP_POSITIVE
-    response_msg.append(Settings.CMD_DATALOG_PACKET)
+    response_msg = Settings.CMD_DATALOG_PACKET
+#BUG: The above line is incorrect as the response should be different to this
     response_msg.append(Settings.EWC_ID)
     response_msg = response_msg + value
 
@@ -684,6 +688,8 @@ def GetNextDataLogPacket():
     global gbl_EWC_Pointer              # Added as I am modifying the global variable
     global gbl_EWC_Records              # Added as I am modifying the global variable
 
+    msg.append(Settings.CMD_DATALOG_PACKET)
+    msg = msg + Settings.EWC_ID
     gbl_EWC_Pointer = gbl_EWC_Pointer + 1
     logging.debug("Get Next Datalog Packet being returned:%s" % gbl_EWC_Pointer)
     if gbl_EWC_Pointer >= Settings.QUANTITY_OF_RECORDS:
@@ -697,6 +703,15 @@ def GetNextDataLogPacket():
     ptr_h = ((gbl_EWC_Pointer & 0x0000ff00)>>8).to_bytes(1, byteorder='big')
     msg.append(ptr_h)
     msg.append(ptr_l)
+    msg.append(Settings.ETX)
+
+    # Create and add the XOR checksum
+    xor = 0
+    for byte in (msg):
+        logging.debug("byte being XOR'd:%s" % byte)
+        xor = xor ^ int(binascii.b2a_hex(byte),16)
+
+    msg.append(binascii.a2b_hex('{:02x}'.format(xor)))
 
     return msg
 
@@ -705,15 +720,14 @@ def MaybeSendPacket(fd):
     This routine is called every time, but it only sends a packet response SOMETIMES
     Handles everything about sending the packet
     """
+    global gbl_EWC_Pointer              # Added as I am modifying the global variable
+    global gbl_EWC_Records              # Added as I am modifying the global variable
+
     guess = random.randint(0,6)
     if guess > 0:       # Changed for debugging
 #    if guess == 5:
         logging.info("Sending a message")
-        response_msg = []
-        response_msg.append(Settings.CMD_DATALOG_PACKET)
-        response_msg = response_msg + Settings.EWC_ID
-        response_msg = response_msg + GetNextDataLogPacket()
-        response = CommsMessageBuilder(response_msg)
+        response = DataLogPacketBuilder()
 
         SendResponse(fd,response)
     else:
