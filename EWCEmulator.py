@@ -14,7 +14,7 @@
 #   I think some of my settings (Packet length esp) are wrong
 #   Packet Validation is not yet implemented
 #
-# BUG: chr(0x80).encode('utf-8') creates a \xc2\x80, is this ok??
+# BUG: chr(0x80).encode('utf-8') creates a \xc2\x80, This needs to be fixed.
 #
 #
 # Testing To Do
@@ -711,7 +711,7 @@ def MaybeSendPacket(fd):
         logging.info("Sending a message")
         response_msg = []
         response_msg.append(Settings.CMD_DATALOG_PACKET)
-        response_msg = response_msg + Settings.EWC_IDgood
+        response_msg = response_msg + Settings.EWC_ID
         response_msg = response_msg + GetNextDataLogPacket()
         response = CommsMessageBuilder(response_msg)
 
@@ -720,7 +720,38 @@ def MaybeSendPacket(fd):
         logging.info("No message sent this time")
     return
 
+def LoadDataPacket():
+    """
+    Perform the data loading activities
+    Returns a structure of the data loaded
+    """
+    goodfile = False
+    while goodfile == False:
+        dpl = DataPacketLoader.LoadandValidateFile()
+        goodfile = dpl[0]
+    logging.info("Valid Data file loaded")
+    return dpl[1]
+
 def IoTReply(fd):
+    """
+    Perform the actions to respond to the IoT.
+    Doesn't handle CTS Control
+    """
+    print("CTRL-C To Exit")
+    try:
+        incomms = True
+        while incomms:
+            # Waiting to see if comms message received
+            gotmessage = CheckForMessage(fd)            #Checks to see if there is any data to be received
+            if gotmessage:
+                RespondToMessage(fd)
+
+    except KeyboardInterrupt:
+        incomms = False
+
+    return
+
+def AutomatedSolution(fd):
     """
     Respond to the IoT commands automatically
     Routine (stay in until CTRL-C
@@ -733,12 +764,7 @@ def IoTReply(fd):
     global gbl_EWC_Records
 
     # load the file
-    goodfile = False
-    while goodfile == False:
-        dpl = DataPacketLoader.LoadandValidateFile()
-        goodfile = dpl[0]
-    logging.info("Valid Data file loaded")
-    gbl_EWC_Records = dpl[1]
+    gbl_EWC_Records = LoadDataPacket()
 
     print("CTRL-C To Exit")
     try:
@@ -788,6 +814,7 @@ def HelpText():
     print("4 - Send Datalog Packet with error code ee")
     print("5 - Send bad Datalog Packet")
     print("0 - Respond to IoT")
+    print("a - Automated Solution")
     print("h - Show this help")
     print("e - exit")
     return
@@ -825,9 +852,11 @@ def main():
             Menu_BadPacket(conn)
         elif choice =="0":
             IoTReply(conn)
-        elif choice.upper() =="E":
+        elif choice.upper() == "A":
+            AutomatedSolution(conn)
+        elif choice.upper() == "E":
             print("Leaving")
-        elif choice.upper() =="H":
+        elif choice.upper() == "H":
             HelpText()
         else:
             print("Unknown Option")
