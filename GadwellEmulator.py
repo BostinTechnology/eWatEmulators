@@ -22,6 +22,11 @@
 #
 # BUG: chr(0x80).encode('utf-8') creates a \xc2\x80, changed, ready to test
 #
+# TODO:
+#   There can now be broadcast messages that start with 0xAA, an example of
+#   that would be time synchronisation
+#
+#
 #-------------------------------------------------------------------------
 
 import RPi.GPIO as GPIO
@@ -248,8 +253,8 @@ def AssetStatus():
 
     request_msg.append(Settings.CMD_ASSET_STATUS)
     request_msg = request_msg + Settings.EWC_ID
-    print("Asset Status - Not yet implemented")
-    return request_msg
+    request = CommsMessageBuilder(request_msg)
+    return request
 
 def SetBatteryVoltLvls():
     """

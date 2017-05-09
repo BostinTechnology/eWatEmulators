@@ -21,10 +21,20 @@
 #
 # Testing To Do
 #   Test CTS control
-#   Test IoT Reply - failed lat time I tried.
+#   Test IoT Reply - failed last time I tried.
 # BUGS
 #   conn in the try except routine at the end is not defined!
 #
+# TODO:
+#   Have the initial EWC ID read to not match the stored, probably needs the Asset command implementing
+#       This will enable the IoT to read the value and then write a different value
+#   Generate a PROX event
+#   Datalog packets are output in realtime, the CTS loop is only used on the comms stuff
+
+#
+# TODO EWC Commands
+#   Update PIC table of values
+#   Request to execute bootloader
 
 
 import RPi.GPIO as GPIO
@@ -555,11 +565,13 @@ def WritePICEEPROM(message):
     value = int(binascii.b2a_hex(message[Settings.LOC_DATA_START+1]),16)       # The data required is the next byte
     try:
         gbl_EWC_Memory[addr] = value
+        response = PositiveReply()
     except:
         print("Failed to Write PIC memory, possibly out of range")
         logging.error("Failed to Write PIC memory, possibly out of range")
         logging.debug("Useful Information addr:%s, value%s" % (addr, value))
-    return PositiveReply()
+        response = NegativeReply()
+    return response
 
 def ReadPICEEPROM(message):
     """
@@ -582,9 +594,6 @@ def ReadSPIEEPROM(message):
     """
     Respond with a 36 byte SPI eeprom Datalog packet from the given location
     """
-    print("Not yet implemented and not clear in the spec")
-    logging.error("Not yet implemented and not clear in the spec")
-
     response_msg = []
     logging.debug("Reading SPI EEPROM Response required")
     global gbl_EWC_Records
@@ -596,9 +605,7 @@ def ReadSPIEEPROM(message):
         logging.error("Failed to Read EWC Record, possibly out of range")
         logging.debug("Useful Information addr:%s" % addr)
         value = Settings.DEF_DATALOG_PKT
-    response_msg = Settings.CMD_DATALOG_PACKET
-#BUG: The above line is incorrect as the response should be different to this
-    response_msg.append(Settings.EWC_ID)
+    response_msg = Settings.RSP_POSITIVE
     response_msg = response_msg + value
 
     response = CommsMessageBuilder(response_msg)
@@ -646,6 +653,8 @@ def DecodeandReply(fd,incoming):
             reply = PositiveReply(incoming)
         elif command == Settings.CMD_VALVE_OFF:
             reply = ValveOff(incoming)
+        elif command == CMD_SET_RTC_CLOCK:
+            reply = PositiveReply(incoming)
         else:
             reply = NegativeReply()
 

@@ -9,11 +9,13 @@ It is intended to be used as part of the eWater Emulator, but it can be run inde
 # It may be necessary to open the file in binary mode, using 'wb'.
 #TODO: Building of the sample file needs to be able to add error details
 
-#BUG: The seperator between records is currnetly attaching itself to the last value.
+#BUG: The seperator between records is currently attaching itself to the last value.
 # Handled within the loading program to strip it off before processing.
 
 #TODO: Retest as part of the encode change
 # changed time calculation as part of the packet generation
+
+#BUG: The conversion to BCD for the date and time is not working correctly as it is not returning BCD.
 
 import logging
 import random
@@ -29,8 +31,8 @@ import Settings
 def GeneratePacket(good=True, error=0, timenow=0):
     """
     Generates and returns a single packet in binary format
-    EE SS MM HH DD MT YY UU UU UU UU UC UC UC UC SCR SCR SCR SCR ECR ECR ECR ECR FC FC FT FT
-    0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15  16  17  18  19  20  21  22  23 24 25 26
+    EE SS MM HH DD MT YY UU UU UU UU UC UC UC UC SCR SCR SCR SCR ECR ECR ECR ECR FC FC FT FT CONVH CONVL
+    5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20  21  22  23  24  25  26  27  28 29 39 31 32    33
     """
     # Create an empty packet
     data_packet = []
@@ -46,6 +48,7 @@ def GeneratePacket(good=True, error=0, timenow=0):
         timenow = datetime.datetime.now()
     logging.debug("Date & Time being used:%s" % timenow)
 
+    #BUG: This is not working correctly as it is not returning BCD.
     data_packet.append(binascii.a2b_hex('{:02d}'.format(timenow.second)))
     data_packet.append(binascii.a2b_hex('{:02d}'.format(timenow.minute)))
     data_packet.append(binascii.a2b_hex('{:02d}'.format(timenow.hour)))
@@ -70,6 +73,9 @@ def GeneratePacket(good=True, error=0, timenow=0):
 
     # 2 byte flow meter time
     data_packet = data_packet + Settings.FLOW_TIME
+
+    # 2 byte litre / Credit conversion
+    data_packet = data_packet + Settings.LITRE_CREDIT_CONV
     return data_packet
 
 def BuildSampleFile(err):

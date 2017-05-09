@@ -4,6 +4,9 @@ This contains the required settings for the eWater Simulator
 """
 
 #TODO: Retest as part of the encode change
+# TODO: Make the EWC_ID a unique value
+# TODO: Error codes needs to be updated.
+
 
 import logging
 
@@ -34,14 +37,15 @@ EWC_MEMORY = [b'\x00', b'\x01', b'\x02', b'\x03', b'\x04', b'\x05', b'\x06', b'\
 # Create a list of error codes that can be used in the datalog packet responses and populate it
 #    with the posible values, no error is \x80
 ERROR_CODES = [b'\xff', b'\x01', b'\x02', b'\x03', b'\x04', b'\x05', b'\x06', b'\x07', b'\x08', b'\x09',
-                b'\x0a', b'\x0b', b'\x0c', b'\x0d', b'\x0e', b'\x0f', b'\x10', b'\x11', b'\x12']
+                b'\x0a', b'\x0b', b'\x0c', b'\x0d', b'\x0e', b'\x0f', b'\x10', b'\x11', b'\x12', b'\x13'
+                b'\x14', b'\x15', b'\x16', b'\x17', b'\x88']
 
 NO_ERROR = b'\x80'
 
 # Default Datalog Packet
-"""                 EE      SS      MM         HH       DD      MT        YY    UU      UU      UU      UU     UC   UC    UC    UC    SCR   SCR   SCR   SCR   ECR   ECR   ECR   ECR   FC        FC      FT       FT
-                    0       1       2          3        4       5         6     7       8       9       10     11   12    13    14    15    16    17    18    19    20    21    22    23        24      25       26"""
-DEF_DATALOG_PKT = [b'\x01', b'\x59', b'\x59', b'\x23', b'\x01', b'\x01', b'\x70', b'>', b'\xaa', b'\xaa', b'<', b'0', b'0', b'1', b'1', b'4', b'0', b'0', b'0', b'3', b'9', b'8', b'9', b'\x01', b'\x10', b'\x1a', b'\x1a', b'0x0', b'0x4', b'\x03', b'\x06']
+"""                EE       SS       MM       HH       DD       MT       YY       UU    UU       UU       UU    UC    UC    UC    UC    SCR   SCR   SCR   SCR   ECR   ECR   ECR   ECR   FC       FC       FT       FT       CONVH    CONVL    DLPH    DLPL    ETX      XOR
+                   5        6        7        8        9        10       11       12    13       14       15    16    17    18    19    20    21    22    23    24    25    26    27    28       29       30       31       32       33       34      35      36       37     No Block counter as only used by EWC """
+DEF_DATALOG_PKT = [b'\x01', b'\x59', b'\x59', b'\x23', b'\x01', b'\x01', b'\x70', b'>', b'\xaa', b'\xaa', b'<', b'0', b'0', b'1', b'1', b'4', b'0', b'0', b'0', b'3', b'9', b'8', b'9', b'\x01', b'\x10', b'\x1a', b'\x1a', b'\x56', b'\x78', b'0x0', b'0x4', b'\x03', b'\x06']
 
 # These values are contained within the datalog packet
 UUID = [b'\x3e', b'\xAA', b'\xAA', b'\x3c']
@@ -50,10 +54,12 @@ START_CREDIT = [b'\x34', b'\x30', b'\x30', b'\x30']
 END_CREDIT = [b'\x33', b'\x39', b'\x38', b'\x39']
 FLOW_COUNT = [b'\x01', b'\x10']
 FLOW_TIME = [b'\x1A', b'\x1A']
+LITRE_CREDIT_CONV = [b'\x56', b'\x78']
 
 
-PACKET_LENGTH_ALL = 37          # Number of bytes in the packet
+PACKET_LENGTH_ALL = 39          # Number of bytes in the packet
 QUANTITY_OF_RECORDS = 1024      # The number of records within the system
+QUANTITY_OF_BLOCKS = 256        # The number of blocks within the IoT
 PACKET_LENGTH_NO_HEAD = 27      # The length of the record without the header or footer parts, jsut the data record.
 
 # Logging level to be used
@@ -72,9 +78,9 @@ CMD_DATALOG_PACKET = bytes.fromhex('44')
 #System Commands
 CMD_SET_RTC_CLOCK = bytes.fromhex('43')
 CMD_BATTERY_STATUS = bytes.fromhex('42')
-CMD_MISSING_DATALOG_REQ = bytes.fromhex('FF')         # TO BE DEFINED
-CMD_ASSET_STATUS = bytes.fromhex('FF')                # TO BE DEFINED
-CMD_SET_BATTERY_VOLT_LVLS = bytes.fromhex('FF')       # TO BE DEFINED
+CMD_MISSING_DATALOG_REQ = bytes.fromhex('52')
+CMD_ASSET_STATUS = bytes.fromhex('41')
+CMD_SET_BATTERY_VOLT_LVLS = bytes.fromhex('56')
 
 #EWC Commands
 CMD_MESSAGE_COMMAND = bytes.fromhex('4d')
