@@ -45,7 +45,7 @@ BAUDRATE = 9600         # The speed of the comms
 PORT = "/dev/serial0"   # The port being used for the comms
 TIMEOUT = 0.5           # The maximum time allowed to receive a message
 GPIO_CTS = 11           # The CTS line, also known as GPIO17
-
+BLOCK_SIZE = 64         # The maximum size of each block of data
 
 def SerialSetup():
     """
@@ -225,6 +225,17 @@ def GetMissingDatalogPacket():
     request_msg = []
     logging.info("Requesting a Missing Datalog Packet")
 
+    blk = -1
+    while blk == -1:
+        blk = input("Select Datalog Packet (1 - %s)" % Settings.QUANTITY_OF_BLOCKS)
+        if blk.isdigit() == False:
+            print("Enter a number please")
+            blk = -1
+        elif int(blk) > Settings.QUANTITY_OF_BLOCKS or int(blk) < 0:
+            print("Only numbers in the range 0 to %s are allowed\n%s" % Settings.QUANTITY_OF_BLOCKS)
+            blk = -1
+    blk = int(blk)
+
     pkt = -1
     while pkt == -1:
         pkt = input("Select Datalog Packet (1 - %s)" % Settings.QUANTITY_OF_RECORDS)
@@ -239,6 +250,7 @@ def GetMissingDatalogPacket():
     print("Sending a request")
     request_msg.append(Settings.CMD_MISSING_DATALOG_REQ)
     request_msg = request_msg + Settings.EWC_ID
+    request_msg.append(binascii.a2b_hex('{:02x}'.format(blk)))
     request_msg.append(binascii.a2b_hex('{:04x}'.format(pkt)))
 
     request = CommsMessageBuilder(request_msg)
@@ -275,6 +287,245 @@ def SetBatteryVoltLvls():
     request = CommsMessageBuilder(request_msg)
     return request
 
+def ReplyToMessages(fd):
+    """
+    Reply to the following messages from the IoT
+    - Battery Capacity Message
+
+
+    """
+    print ("Not Yet Implemented as there are no commands currently defined that need responses")
+    return
+
+def ChooseFile():
+    """
+    Checks the given directory and allows the user to load a file
+    """
+    filename = ""
+    completed = False
+    while completed == False:
+        try:
+            filename = input("Enter the full filename to load and Press Enter:")
+            print("CTRL-C to Cancel")
+            completed = os.path.isfile(filename)
+        except KeyboardInterrupt:
+            completed = True
+        except:
+            print("Error loading file, please try again")
+    return filename
+
+def OpenFile(filename):
+    """
+    Using binary mode
+    Open the file and return the identifier
+    """
+    try:
+        rd = open(filename, 'rb')
+        logging.debug("File %s opened as %s" % (filename, rd))
+    except:
+        print("Unable to Open File, program aborted")
+        logging.error("Unable to Open File %s, program aborted" % filename)
+        sys.exit()
+    return rd
+
+def SelectFile():
+    """
+    Get the required file to program
+    Also get the device type
+    return a list of the filename, the identifier,the device type and the quantity of chunks,
+    """
+    file_data = []
+
+    file_data[0] = ChooseFile()
+    if len(file_data[0]) < 1:
+        return file_data
+
+    file_data[1] = OpenFile(file_data[0])
+    if len(file_data[1]) < 1:
+        return file_data
+
+    # Choose device type
+    dev = -1
+    while dev == -1:
+        dev = input("Select Device Type Packet (1 - 6)")
+        if dev.isdigit() == False:
+            print("Enter a number please")
+            dev = -1
+        elif int(dev) > 6 or int(dev) < 1:
+            print("Only numbers in the range 0 to 6 are allowed\n")
+            dev = -1
+    file_data[2] = binascii.a2b_hex('{:02x}'.format(int(dev))
+
+    file_size = os.path.getsize(file_data[0])
+    chunks = int(file_size / BLOCK_SIZE)
+    if file_size % BLOCK_SIZE:
+        # there is a remainder, therefore 1 left over chunk.
+        chunks = chunks + 1
+    file_data[3] = chunks
+    return file_data
+
+def RequestID(fd):
+    """
+    Requests the ID from the IoT
+    """
+    request_msg = []
+    logging.debug("Send Request ID message")
+
+    request_msg.append(Settings.CMD_REQUEST_ID)
+    request = CommsMessageBuilder(request_msg)
+
+    ans = WriteDataBinary(fd,to_send)
+    if ans > 0:
+        print("Packet Sent: %s" % to_send)
+    else:
+        print("Failed to Send Packet")
+
+    #Wait for the reply
+    ans = WaitForResponse(fd)
+
+    if len(ans) == 8:
+        iot_id = ans[2:6]
+    else:
+        iot_id = ''
+    logging.info("IoT ID extracted from the reply:%s" % iot_id)
+
+    return iot_id
+
+def IoTReadyforFirmware(fd, iot_id, toprogram):
+    """
+    Asks the IoT if it is ready for the firmware
+    """
+    request_msg = []
+    logging.debug("IoT Ready For Firmware")
+
+    if len(iot_id) != 4:
+        print("Please Ensure Request ID command run first")
+        return
+    if toprogram[0] == '':
+        print("Please ensure you have loaded a file first")
+        return
+
+    request_msg.append(Settings.CMD_IOT_READY_FOR_FIRMWARE)
+    request_msg = request_msg + iot_id
+    request_msg = request_msg + toprogram[2]        # Device
+    request_msg = request_msg + binascii.a2b_hex('{:02x}'.format(toprogram[3] >> 8))            # Chunks MSB
+    request_msg = request_msg + binascii.a2b_hex('{:02x}'.format(toprogram[3] & 0x00ff))            # Chunks LSB
+    request = CommsMessageBuilder(request_msg)
+
+    ans = WriteDataBinary(fd,to_send)
+    if ans > 0:
+        print("Packet Sent: %s" % to_send)
+    else:
+        print("Failed to Send Packet")
+
+    #Wait for the reply
+    ans = WaitForResponse(fd)
+
+    if ans[0] != RSP_POSITIVE:
+        logging.info("Response is NEGATIVE: %s" % ans)
+        print("Negative response received: %s" % ans)
+    else:
+        logging.info("Response Received:%s" % ans)
+        print("The IoT is Ready for the firmware")
+
+    return
+
+def SendData(fd, iot_id, toprogram):
+    """
+    Send the data to the IoT
+    """
+    request_msg = []
+    logging.debug("Send Data")
+
+    if len(iot_id) != 4:
+        print("Please Ensure Request ID command run first")
+        return
+    if toprogram[0] == '':
+        print("Please ensure you have loaded a file first")
+        return
+
+    chunk = toprogram[3]
+    while chunk > 0:
+        # Send the chunk
+        request_msg = []
+        request_msg = request_msg + CMD_SEND_DATA_CHUNK
+        request_msg = request_msg + iot_id
+        request_msg = request_msg + binascii.a2b_hex('{:02x}'.format(chunk >> 8))            # Chunk MSB
+        request_msg = request_msg + binascii.a2b_hex('{:02x}'.format(chunk & 0x00ff))            # Chunk LSB
+        payload = toprogram[1].read(BLOCK_SIZE)
+        if len(payload) < BLOCK_SIZE:
+            payload = payload + b'00000000000000000000000000000000000000000000000000000000000000000'
+        request_msg = request_msg + payload[:64]
+
+        request = CommsMessageBuilder(request_msg)
+
+        ans = WriteDataBinary(fd,to_send)
+        if ans > 0:
+            print("Chunk Sent: %s" % to_send)
+        else:
+            print("Failed to Send Chunk")
+
+        #Wait for the reply
+        ans = WaitForResponse(fd)
+
+        if ans[0] != RSP_POSITIVE:
+            logging.debug("Send Chunk Response was negative:%s" % ans)
+            print("Negative response to send chunk message")
+            break
+
+    return
+
+def ApplyFirmware(fd, iot_id):
+    """
+    Requests the ID from the IoT
+    """
+    if len(iot_id) != 4:
+        print("Please Ensure Request ID command run first")
+        return
+
+CMD_APPLY_FIRMWARE
+
+
+    print("Not yet implemented")
+    return
+
+
+
+
+
+def Programming(fd):
+    """
+    Perform the system programming functions. Will need to select a suitable file first.
+    - Request ID Command (this is not strictly a system command as it can only be sent by the Bluetooth)
+    - IoT Ready for Firmware
+    - Send Data Chunk
+    - Apply Firmware
+
+    """
+    print("1 - Select File to Program")
+    print("2 - Request ID")
+    print("3 - IoT Ready for Firmware")
+    print("4 - Send Data")
+    print("5 - Apply Firmware")
+    print("e - return to previous menu")
+
+    choice = ""
+    while choice.upper() != "E":
+        choice = input("Select Menu Option:")
+        if choice == "1":
+            toprogram = SelectFile()
+        elif choice == "2":
+            iot_id = RequestID(fd)
+        elif choice == "3":
+            IoTReadyforFirmware(fd, iot_id, toprogram)
+        elif choice == "4":
+            SendData(fd, iot_id, toprogram)
+        elif choice == "5":
+            ApplyFirmware(fd, iot_id)
+        else:
+            print("Unknown Option")
+    return
+
 def Menu_IoTSend(fd):
     """
     Enable the Gadwell Emulator to send messages to the IoT
@@ -286,6 +537,7 @@ def Menu_IoTSend(fd):
     print("2 - Missing Datalog Message Request")
     print("3 - Asset Status")
     print("4 - Set Battery Voltage Levels")
+    print("5 - Reply to IoT Messages")
     print("e - Return to previous menu")
 
     while True:
@@ -322,6 +574,8 @@ def HelpText():
     print("------------\n\n")
     print("1 - Receive Datalog Packet")
     print("0 - Send System Command to IoT")
+    print("R - Reply to IoT message")
+    print("P - Perform Iot / EWC Programming")
     print("h - Show this help")
     print("e - exit")
     return
@@ -351,6 +605,10 @@ def main():
             ReceivePackets(conn)
         elif choice =="0":
             Menu_IoTSend(conn)
+        elif choice =="P":
+            Programming(conn)
+        elif choice =="R":
+            to_send = ReplyToMessages(conn)
         elif choice.upper() =="E":
             print("Leaving")
         elif choice.upper() =="H":

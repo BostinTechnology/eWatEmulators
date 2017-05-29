@@ -81,6 +81,10 @@ CMD_BATTERY_STATUS = bytes.fromhex('42')
 CMD_MISSING_DATALOG_REQ = bytes.fromhex('52')
 CMD_ASSET_STATUS = bytes.fromhex('41')
 CMD_SET_BATTERY_VOLT_LVLS = bytes.fromhex('56')
+CMD_REQUEST_ID = bytes.fromhex('47')
+CMD_IOT_READY_FOR_FIRMWARE = bytes.fromhex('49')
+CMD_SEND_DATA_CHUNK = bytes.fromhex('48')
+CMD_APPLY_FIRMWARE = bytes.fromhex('55')
 
 #EWC Commands
 CMD_MESSAGE_COMMAND = bytes.fromhex('4d')
