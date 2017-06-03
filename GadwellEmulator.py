@@ -14,7 +14,6 @@
 
 # TODO:
 #   upgrade pyserial to v3 and change commands marked #v3
-#   Call DataPacketLoader and PacketGenerator from within this main menu
 #   Consider adding the packets into a class so I can manipulate them easier maybe...
 #   improve code by having writedata respond with a message if failed
 #   - stops it repeating the same 5 lines of code
@@ -37,6 +36,7 @@ import datetime
 import traceback
 import binascii
 import random
+import os
 
 import Settings
 
@@ -308,6 +308,7 @@ def ChooseFile():
             filename = input("Enter the full filename to load and Press Enter:")
             print("CTRL-C to Cancel")
             completed = os.path.isfile(filename)
+            logging.debug("File chosen for downloading:%s with status:%s" % (filename, completed))
         except KeyboardInterrupt:
             completed = True
         except:
@@ -334,14 +335,16 @@ def SelectFile():
     Also get the device type
     return a list of the filename, the identifier,the device type and the quantity of chunks,
     """
-    file_data = []
+    file_data = ["","",0,0]
 
     file_data[0] = ChooseFile()
     if len(file_data[0]) < 1:
+        logging.debug("Failed to choose a file, selcetfile ended")
         return file_data
 
     file_data[1] = OpenFile(file_data[0])
-    if len(file_data[1]) < 1:
+    if file_data[1] == "":
+        logging.debug("Failed to open a file, selcetfile ended")
         return file_data
 
     # Choose device type
@@ -354,7 +357,8 @@ def SelectFile():
         elif int(dev) > 6 or int(dev) < 1:
             print("Only numbers in the range 0 to 6 are allowed\n")
             dev = -1
-    file_data[2] = binascii.a2b_hex('{:02x}'.format(int(dev))
+    file_data[2] = binascii.a2b_hex('{:02x}'.format(int(dev)))
+    logging.debug("Device ID chosen to use (entered and binary):%s - %s" % (dev, file_data[2]))
 
     file_size = os.path.getsize(file_data[0])
     chunks = int(file_size / BLOCK_SIZE)
@@ -362,6 +366,7 @@ def SelectFile():
         # there is a remainder, therefore 1 left over chunk.
         chunks = chunks + 1
     file_data[3] = chunks
+    logging.debug("File size and the number of chunks: %s - %s" % (file_size, chunks))
     return file_data
 
 def RequestID(fd):
@@ -374,9 +379,9 @@ def RequestID(fd):
     request_msg.append(Settings.CMD_REQUEST_ID)
     request = CommsMessageBuilder(request_msg)
 
-    ans = WriteDataBinary(fd,to_send)
+    ans = WriteDataBinary(fd,request)
     if ans > 0:
-        print("Packet Sent: %s" % to_send)
+        print("Packet Sent: %s" % request)
     else:
         print("Failed to Send Packet")
 
@@ -400,33 +405,38 @@ def IoTReadyforFirmware(fd, iot_id, toprogram):
 
     if len(iot_id) != 4:
         print("Please Ensure Request ID command run first")
-        return
+        iot_id = Settings.EWC_ID
+        #return
     if toprogram[0] == '':
         print("Please ensure you have loaded a file first")
         return
 
     request_msg.append(Settings.CMD_IOT_READY_FOR_FIRMWARE)
     request_msg = request_msg + iot_id
-    request_msg = request_msg + toprogram[2]        # Device
-    request_msg = request_msg + binascii.a2b_hex('{:02x}'.format(toprogram[3] >> 8))            # Chunks MSB
-    request_msg = request_msg + binascii.a2b_hex('{:02x}'.format(toprogram[3] & 0x00ff))            # Chunks LSB
+    request_msg.append(toprogram[2])        # Device
+    request_msg.append(binascii.a2b_hex('{:02x}'.format(toprogram[3] >> 8)) )           # Chunks MSB
+    request_msg.append(binascii.a2b_hex('{:02x}'.format(toprogram[3] & 0x00ff)))            # Chunks LSB
     request = CommsMessageBuilder(request_msg)
 
-    ans = WriteDataBinary(fd,to_send)
+    ans = WriteDataBinary(fd,request)
     if ans > 0:
-        print("Packet Sent: %s" % to_send)
+        print("Packet Sent: %s" % request)
     else:
         print("Failed to Send Packet")
 
     #Wait for the reply
     ans = WaitForResponse(fd)
 
-    if ans[0] != RSP_POSITIVE:
-        logging.info("Response is NEGATIVE: %s" % ans)
-        print("Negative response received: %s" % ans)
+    if len(ans) > 7:
+        if ans[0] != Settings.RSP_POSITIVE:
+            logging.info("Response is NEGATIVE: %s" % ans)
+            print("Negative response received: %s" % ans)
+        else:
+            logging.info("Response Received:%s" % ans)
+            print("The IoT is Ready for the firmware")
     else:
         logging.info("Response Received:%s" % ans)
-        print("The IoT is Ready for the firmware")
+        print("Response received is too short (min 7)")
 
     return
 
@@ -439,7 +449,8 @@ def SendData(fd, iot_id, toprogram):
 
     if len(iot_id) != 4:
         print("Please Ensure Request ID command run first")
-        return
+        iot_id = Settings.EWC_ID
+        #return
     if toprogram[0] == '':
         print("Please ensure you have loaded a file first")
         return
@@ -448,48 +459,78 @@ def SendData(fd, iot_id, toprogram):
     while chunk > 0:
         # Send the chunk
         request_msg = []
-        request_msg = request_msg + CMD_SEND_DATA_CHUNK
+        request_msg.append(Settings.CMD_SEND_DATA_CHUNK)
         request_msg = request_msg + iot_id
-        request_msg = request_msg + binascii.a2b_hex('{:02x}'.format(chunk >> 8))            # Chunk MSB
-        request_msg = request_msg + binascii.a2b_hex('{:02x}'.format(chunk & 0x00ff))            # Chunk LSB
+        request_msg.append(binascii.a2b_hex('{:02x}'.format(chunk >> 8)) )           # Chunk MSB
+        request_msg.append(binascii.a2b_hex('{:02x}'.format(chunk & 0x00ff)) )           # Chunk LSB
         payload = toprogram[1].read(BLOCK_SIZE)
+        request_msg.append(binascii.a2b_hex('{:02x}'.format(len(payload))))
         if len(payload) < BLOCK_SIZE:
             payload = payload + b'00000000000000000000000000000000000000000000000000000000000000000'
-        request_msg = request_msg + payload[:64]
+        for byte in payload[:64]:
+            request_msg.append(binascii.a2b_hex('{:02x}'.format(byte)))
+        logging.debug("Data Chunk:%s Content:%s" % (chunk, request_msg))
 
         request = CommsMessageBuilder(request_msg)
 
-        ans = WriteDataBinary(fd,to_send)
+        ans = WriteDataBinary(fd,request)
         if ans > 0:
-            print("Chunk Sent: %s" % to_send)
+            print("Chunk Sent: %s" % request)
         else:
             print("Failed to Send Chunk")
 
         #Wait for the reply
         ans = WaitForResponse(fd)
 
-        if ans[0] != RSP_POSITIVE:
-            logging.debug("Send Chunk Response was negative:%s" % ans)
-            print("Negative response to send chunk message")
+        if len(ans) > 7:
+            if ans[0] != Settings.RSP_POSITIVE:
+                logging.debug("Send Chunk Response was negative:%s" % ans)
+                print("Negative response to send chunk message")
+                break
+        else:
+            logging.info("Response Received:%s" % ans)
+            print("Response received is too short (min 7)")
             break
 
     return
 
-def ApplyFirmware(fd, iot_id):
+def ApplyFirmware(fd, iot_id, toprogram):
     """
     Requests the ID from the IoT
     """
+    request_msg = []
+    logging.debug("Apply Firmware")
+
     if len(iot_id) != 4:
         print("Please Ensure Request ID command run first")
-        return
+        iot_id = Settings.EWC_ID
+        #return
 
-CMD_APPLY_FIRMWARE
+    request_msg.append(Settings.CMD_APPLY_FIRMWARE)
+    request_msg = request_msg + iot_id
+    request_msg.append(toprogram[2])        # Device
+    request = CommsMessageBuilder(request_msg)
 
+    ans = WriteDataBinary(fd,request)
+    if ans > 0:
+        print("Packet Sent: %s" % request)
+    else:
+        print("Failed to Send Packet")
 
-    print("Not yet implemented")
+    #Wait for the reply
+    ans = WaitForResponse(fd)
+
+    if len(ans) > 8:
+        if ans[0] != Settings.RSP_POSITIVE:
+            logging.info("Response is NEGATIVE: %s" % ans)
+            print("Negative response received: %s" % ans)
+        else:
+            logging.info("Response Received:%s" % ans)
+            print("Application of the firmware has been successful")
+    else:
+        logging.info("Respojnse too short to validate")
+        print("Respnse from IoT too short")
     return
-
-
 
 
 
@@ -514,6 +555,7 @@ def Programming(fd):
         choice = input("Select Menu Option:")
         if choice == "1":
             toprogram = SelectFile()
+            print("\nFile Loaded . . .\n")
         elif choice == "2":
             iot_id = RequestID(fd)
         elif choice == "3":
@@ -521,7 +563,7 @@ def Programming(fd):
         elif choice == "4":
             SendData(fd, iot_id, toprogram)
         elif choice == "5":
-            ApplyFirmware(fd, iot_id)
+            ApplyFirmware(fd, iot_id, toprogram)
         else:
             print("Unknown Option")
     return
