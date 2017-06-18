@@ -277,12 +277,12 @@ def SetBatteryVoltLvls():
 
     request_msg.append(Settings.CMD_SET_BATTERY_VOLT_LVLS)
     request_msg = request_msg + Settings.EWC_ID
-    request_msg.append(binascii.a2b_hex('{:02x}'.format(Settings.BATT_TRIP_LVL1)))
-    request_msg.append(binascii.a2b_hex('{:02x}'.format(Settings.BATT_TRIP_LVL2)))
-    request_msg.append(binascii.a2b_hex('{:02x}'.format(Settings.BATT_TRIP_LVL3)))
-    request_msg.append(binascii.a2b_hex('{:02x}'.format(Settings.BATT_TRIP_LVL4)))
-    request_msg.append(binascii.a2b_hex('{:02x}'.format(Settings.BATT_TRIP_LVL5)))
-    request_msg.append(binascii.a2b_hex('{:02x}'.format(Settings.BATT_TRIP_LVL6)))
+    request_msg.append(binascii.a2b_hex('{:04x}'.format(Settings.BATT_TRIP_LVL1)))
+    request_msg.append(binascii.a2b_hex('{:04x}'.format(Settings.BATT_TRIP_LVL2)))
+    request_msg.append(binascii.a2b_hex('{:04x}'.format(Settings.BATT_TRIP_LVL3)))
+    request_msg.append(binascii.a2b_hex('{:04x}'.format(Settings.BATT_TRIP_LVL4)))
+    request_msg.append(binascii.a2b_hex('{:04x}'.format(Settings.BATT_TRIP_LVL5)))
+    request_msg.append(binascii.a2b_hex('{:04x}'.format(Settings.BATT_TRIP_LVL6)))
 
     request = CommsMessageBuilder(request_msg)
     return request
@@ -678,6 +678,5 @@ if __name__ == '__main__':
     GPIO.cleanup()
     logging.info("Program Exited")
     sys.exit()
-
 
 
